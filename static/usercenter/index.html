@@ -1,0 +1,46 @@
+<!doctype html> <html lang="zh"> <head><meta name="deploy_time" content="1779352085"> <meta content="text/html; charset=utf-8" http-equiv="Content-Type"/> <meta name="renderer" content="webkit"/> <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1"/> <meta name="robots" content="all"/> <meta name="googlebot" content="all"/> <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,minimum-scale=1,user-scalable=no,viewport-fit=cover"/> <meta name="format-detection" content="telephone=no, address=no, email=no"/> <meta name="mobile-web-app-capable" content="yes"/> <meta name="application-name" content="叠纸账号中心"/> <link rel="icon" href="/usercenter/assets.papegames.com/nikkiweb/papegame/papercn/material/hi2fmedv/favicon.ico"/> <title>叠纸账号中心</title> <meta name="keywords" content="叠纸账号中心"/> <meta name="description" content="叠纸账号中心"/> <meta property="og:site_name" content="叠纸账号中心"/> <meta name="twitter:card" content="summary_large_image"/> <meta property="og:type" content="website"/> <script defer src="/usercenter/assets.papegames.com/nikkiweb/paper/account-center-cn/static/js/runtime.local.83213c3a.js?v=local20260703" ></script><script defer src="/usercenter/assets.papegames.com/nikkiweb/paper/account-center-cn/static/js/framework.f29a307d.js?v=local20260703" ></script><script defer src="/usercenter/assets.papegames.com/nikkiweb/paper/account-center-cn/static/js/ui-lib.6a78fca0.js?v=local20260703" ></script><script defer src="/usercenter/assets.papegames.com/nikkiweb/paper/account-center-cn/static/js/custom.d25e2100.js?v=local20260703" ></script><script defer src="/usercenter/assets.papegames.com/nikkiweb/paper/account-center-cn/static/js/vendors.1727493e.js?v=local20260703" ></script><script defer src="/usercenter/assets.papegames.com/nikkiweb/paper/account-center-cn/static/js/index.63b27cfd.js?v=local20260703" ></script><link href="/usercenter/assets.papegames.com/nikkiweb/paper/account-center-cn/static/css/custom.04618d06.css?v=local20260703" rel="stylesheet"><link href="/usercenter/assets.papegames.com/nikkiweb/paper/account-center-cn/static/css/index.3887af3f.css?v=local20260703" rel="stylesheet"><script>
+(function () {
+  var allowed = new Set([location.host]);
+  function isExternalUrl(input) {
+    try {
+      var url = new URL(typeof input === "string" ? input : input && input.url || "", location.href);
+      return url.protocol.indexOf("http") === 0 && !allowed.has(url.host);
+    } catch (e) {
+      return false;
+    }
+  }
+  var nativeFetch = window.fetch;
+  window.fetch = function (input, init) {
+    if (isExternalUrl(input)) {
+      console.warn("[usercenter] blocked external fetch", input && input.url || input);
+      return Promise.resolve(new Response("{}", { status: 200, headers: { "Content-Type": "application/json" } }));
+    }
+    return nativeFetch.apply(this, arguments);
+  };
+  if (navigator.sendBeacon) {
+    var nativeSendBeacon = navigator.sendBeacon.bind(navigator);
+    navigator.sendBeacon = function (url) {
+      if (isExternalUrl(url)) {
+        console.warn("[usercenter] blocked beacon", url);
+        return true;
+      }
+      return nativeSendBeacon.apply(this, arguments);
+    };
+  }
+  var NativeXHR = window.XMLHttpRequest;
+  window.XMLHttpRequest = function () {
+    var xhr = new NativeXHR();
+    var open = xhr.open;
+    xhr.open = function (method, url) {
+      if (isExternalUrl(url)) {
+        console.warn("[usercenter] blocked xhr", url);
+        url = "/usercenter/local-empty.json";
+      }
+      return open.call(this, method, url, arguments[2] !== false, arguments[3], arguments[4]);
+    };
+    return xhr;
+  };
+  window.__rum = { enable: false };
+  window.getMetaInfo = function () { return "{}"; };
+})();
+</script></head> <body> <div id="app"></div> </body> </html> 

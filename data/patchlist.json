@@ -1,0 +1,37 @@
+{
+    "game_config_apk": {
+        "apk_version": "5.0.0",
+        "apk_url": "https://x3cn-game-apk.papegames.com/x3cn/apk/lysk_guanfang.apk"
+    },
+    "game_config_audit": 0,
+    "game_config_patch": {
+        "id": 500057,
+        "clientid": 1068,
+        "region": 1,
+        "channel": 2,
+        "role": 0,
+        "mode": 0,
+        "extra": {
+            "hotfix_version": "1.6.1395",
+            "scene_version": "1.6.1392|16509360|2703586730",
+            "cdn_url": "https://x3cn-client-v7wbza3toheu78pn9r.papegames.com/prd;https://x3cn-client-v7wbza3toheu78pn9r-backup.papegames.com/prd",
+            "pre_version": "pre_1.4.5000|1.4.1224|3.0.0"
+        }
+    },
+    "game_config_patch_extra": {
+        "id": 19,
+        "clientid": 1068,
+        "region": 1,
+        "channel": 2,
+        "role": 0,
+        "mode": 0,
+        "extra": {
+            "pre_version": "pre_1.6.7000|1.6.1383|5.0.0"
+        }
+    },
+    "game_config_privacy_agreement_version": 0,
+    // "ret": 0,
+    // "request_id": "212f1ede-4ef3-4e34-8bc0-ddf9812bf0d3",
+    // "msg": "OK",
+    // "time": 1782977515这些服务器自己生成
+}

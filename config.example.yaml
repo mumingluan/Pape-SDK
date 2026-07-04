@@ -1,0 +1,78 @@
+db_uri: "sqlite://./data.db"
+# db_uri: "mysql://pape:pape@tcp(127.0.0.1:3306)/pape?charset=utf8mb4&parseTime=true&loc=Local"
+data_dir: "./data"
+
+sdk:
+  enabled: true
+  bindhost: "0.0.0.0"
+  bindport: 8088
+
+login:
+  enabled: true
+  bindhost: "0.0.0.0"
+  bindport: 8088
+  accessaddress: "127.0.0.1:8088"
+
+usercenter:
+  enabled: true
+  bindhost: "0.0.0.0"
+  bindport: 8089
+  accessaddress: "127.0.0.1:8089"
+
+game:
+  enabled: true
+  bindhost: "0.0.0.0"
+  bindport: 13001
+
+authentication:
+  realpassword: false # true后 /v1/user/login 会校验密码，重置密码和用户中心可设置密码
+  realsms: false      # true后只接受真实生成并保存的验证码，不接受固定虚拟码
+  smsregister: false  # true后短信只可注册新账号，已有账号必须先设置/找回密码再密码登录
+
+constants:
+  client_id: 1068
+  app_id: "kmT84W9D"
+  app_key: "Efytc7XAliCx1P4Z"
+  aes_key: "fVFLsy60quh79M2b"
+
+usercenter_constants:
+  client_id: 1003
+  client_key: "jshR3bIqYUSF"
+  app_id: "1010013"
+  app_key: "NsalbZh76U8VGJp1"
+  aes_key: "ZTM7fu0xYnzkE5Km"
+
+realname_identity:
+  realname: "叠纸游戏"
+  realid: "Pape-SDK"
+
+hosts:
+  api: "api-deepspace.papegames.com"
+  passport: "passport.papegames.com"
+  apm: "apm.papegames.com"
+  risk: "risk-api.papegames.com"
+  web: "www.papegames.com"
+  notice: "deepspace.papegames.com"
+
+parameters:
+  PreDownload_Switch: "0"
+  ResUpdate_CheckResIntegrity: "0"
+  ResUpdate_ReStartGame: "0"
+  SUBPACKAGE_ID: ""
+  DELETABLE_SUBPACKAGE_ID: ""
+  ResUpdate_CheckBPackage_Data: ""
+  UIText_zh-CN: ""
+
+
+hotfix:
+  proxy: false # false则 patchlist直接由data/patchlist.json提供 true则由proxy_url反向代理获取
+  proxy_url: "https://x3cn-client-v7wbza3toheu78pn9r.papegames.com"
+
+sms:
+  provider: "aliyun"
+  aliyun:
+    access_key_id: "XXXXXXXXXXXXXXXXXXX"
+    access_key_secret: "XXXXXXXXXXXXXXXXXXX"
+    region_id: "cn-hangzhou"
+    sign_name: "叠纸游戏"
+    template_code: "XXXXXXXXXXXXXXXXXXX"
