@@ -1,0 +1,15 @@
+{
+  "code": 0,
+  "info": "OK",
+  "request_id": "generated-at-runtime",
+  "data": {
+    "deliver_retry_round_times": 20,
+    "deliver_retry_count": 5,
+    "payloadingtime": 60,
+    "pay_env": "release",
+    "guest_recharge": 0,
+    "currency": [],
+    "ccr": false,
+    "charge_version": {}
+  }
+}

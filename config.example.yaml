@@ -1,6 +1,6 @@
-db_uri: "sqlite://./data.db"
+db_uri: "sqlite://./data/data.db"
 # db_uri: "mysql://pape:pape@tcp(127.0.0.1:3306)/pape?charset=utf8mb4&parseTime=true&loc=Local"
-data_dir: "./data"
+config_dir: "./config"
 
 sdk:
   enabled: true
@@ -23,6 +23,15 @@ game:
   enabled: true
   bindhost: "0.0.0.0"
   bindport: 13001
+
+proxy:
+  enabled: true
+  bindhost: "0.0.0.0"
+  bindport: 8888
+  usehttp2: true
+  collect_route: true
+  caprivkey: "./certs/rootca.key"
+  cacert: "./certs/rootca.crt"
 
 authentication:
   realpassword: false # true后 /v1/user/login 会校验密码，重置密码和用户中心可设置密码
@@ -53,20 +62,6 @@ hosts:
   risk: "risk-api.papegames.com"
   web: "www.papegames.com"
   notice: "deepspace.papegames.com"
-
-parameters:
-  PreDownload_Switch: "0"
-  ResUpdate_CheckResIntegrity: "0"
-  ResUpdate_ReStartGame: "0"
-  SUBPACKAGE_ID: ""
-  DELETABLE_SUBPACKAGE_ID: ""
-  ResUpdate_CheckBPackage_Data: ""
-  UIText_zh-CN: ""
-
-
-hotfix:
-  proxy: false # false则 patchlist直接由data/patchlist.json提供 true则由proxy_url反向代理获取
-  proxy_url: "https://x3cn-client-v7wbza3toheu78pn9r.papegames.com"
 
 sms:
   provider: "aliyun"

@@ -8,11 +8,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"log"
 	"net"
 	"net/http"
-	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -71,6 +69,13 @@ func Run(configPath string) error {
 		},
 		userCenterClientID: strconv.Itoa(cfg.UserCenterConstants.ClientID),
 	}
+	var proxyHandler http.Handler
+	if cfg.Proxy.Enabled {
+		proxyHandler, err = newProxyHandler(cfg, app.router(true, true, true))
+		if err != nil {
+			return err
+		}
+	}
 
 	type group struct {
 		host       string
@@ -105,6 +110,10 @@ func Run(configPath string) error {
 	if cfg.Game.Enabled {
 		started++
 		go serveTCP(cfg.Game.BindHost, cfg.Game.BindPort)
+	}
+	if cfg.Proxy.Enabled {
+		started++
+		go serveHTTP("proxy", cfg.Proxy.BindHost, cfg.Proxy.BindPort, proxyHandler)
 	}
 	if started == 0 {
 		return errors.New("no service enabled")
@@ -156,6 +165,11 @@ func (a *App) router(withSDK, withLogin, withUserCenter bool) *gin.Engine {
 	r.Use(gin.Logger(), gin.Recovery(), a.requestLog())
 	r.GET("/healthz", func(c *gin.Context) { c.JSON(200, gin.H{"ok": true, "time": time.Now().Unix()}) })
 	if withSDK {
+		r.GET("/", func(c *gin.Context) { c.String(200, "not found") })
+	} else if withUserCenter {
+		r.GET("/", func(c *gin.Context) { c.Redirect(http.StatusFound, "/usercenter") })
+	}
+	if withSDK {
 		a.mountSDK(r)
 	}
 	if withLogin {
@@ -168,6 +182,10 @@ func (a *App) router(withSDK, withLogin, withUserCenter bool) *gin.Engine {
 		a.mountUserCenter(r)
 	}
 	r.NoRoute(func(c *gin.Context) {
+		if a.cfg.Proxy.CollectRoute && isProxyInternalRequest(c.Request) {
+			a.forwardUpstream(c, "", true, "unimplemented_route", false)
+			return
+		}
 		if strings.EqualFold(c.GetHeader("Upgrade"), "websocket") {
 			a.websocket(c)
 			return
@@ -192,7 +210,6 @@ func (a *App) requestLog() gin.HandlerFunc {
 }
 
 func (a *App) mountSDK(r *gin.Engine) {
-	r.GET("/", func(c *gin.Context) { c.String(200, "not found") })
 	r.GET("/favicon.ico", func(c *gin.Context) { c.Status(204) })
 	r.GET("/contract", a.contract)
 	r.GET("/notice/:name", a.notice)
@@ -282,13 +299,12 @@ func (a *App) mountSDK(r *gin.Engine) {
 	r.GET("/v1/gameconfig/privacyagreement", a.privacyAgreement)
 	r.GET("/v1/gameconfig/patchlist", a.patchList)
 	r.GET("/v1/conf/sdkclient", a.sdkClient)
+	r.POST("/v1/payment/init", a.paymentInit)
 	r.GET("/v1/gameconfig/parameter", a.parameter)
 	r.Any("/v1/throttle/acquire", a.throttle)
-	r.GET("/v1/gameconfig/sensitive/client/version", func(c *gin.Context) { c.JSON(200, gin.H{"ret": 0, "version": 1}) })
-	r.GET("/v1/gameconfig/sensitive/client", func(c *gin.Context) { c.JSON(200, gin.H{"ret": 0, "words": []any{}, "version": 1}) })
-	r.GET("/v1/announcelist", func(c *gin.Context) {
-		c.JSON(200, gin.H{"ret": 0, "announcements": []any{}, "time": time.Now().Unix()})
-	})
+	r.GET("/v1/gameconfig/sensitive/client/version", a.sensitiveClientVersion)
+	r.GET("/v1/gameconfig/sensitive/client", a.sensitiveClient)
+	r.GET("/v1/announcelist", a.announceList)
 	r.Any("/v1/log/sendtlog", func(c *gin.Context) { c.JSON(200, gin.H{"ret": 0, "time": time.Now().Unix()}) })
 	r.Any("/rqd/pb/async", func(c *gin.Context) { c.JSON(200, httpx.Envelope(nil)) })
 	r.Any("/v3/cloudconf", func(c *gin.Context) { c.JSON(200, httpx.Envelope(nil)) })
@@ -301,7 +317,6 @@ func (a *App) mountLogin(r *gin.Engine) {
 }
 
 func (a *App) mountUserCenter(r *gin.Engine) {
-	r.GET("/", func(c *gin.Context) { c.Redirect(http.StatusFound, "/usercenter") })
 	r.GET("/usercenter", a.userCenterHome)
 	r.GET("/usercenter/*filepath", a.userCenterAsset)
 	r.POST("/usercenter/send-code", a.userCenterSendCode)
@@ -1127,7 +1142,7 @@ func (a *App) roleInfo(c *gin.Context) {
 		return
 	}
 	now := time.Now().Unix()
-	c.JSON(200, gin.H{"ret": 0, "roleinfo": gin.H{"1": gin.H{"Uid": u.NID + 790000000, "ZoneID": 1, "Name": "Player", "FamilyName": "Test", "Level": 1, "LastRefreshTime": now, "CTime": now}}, "time": now})
+	officialTextJSON(c, gin.H{"ret": 0, "roleinfo": gin.H{"1": gin.H{"Uid": u.NID + 790000000, "ZoneID": 1, "Name": "Player", "FamilyName": "Test", "Level": 1, "LastRefreshTime": now, "CTime": now}}, "time": now})
 }
 
 func (a *App) serverList(c *gin.Context) {
@@ -1147,29 +1162,90 @@ func (a *App) privacyAgreement(c *gin.Context) {
 }
 
 func (a *App) patchList(c *gin.Context) {
-	if a.cfg.Hotfix.Proxy {
-		a.proxy(c)
-		return
-	}
 	a.dataJSON(c, "patchlist.json", true)
 }
 
 func (a *App) dataJSON(c *gin.Context, name string, includeMsg bool) {
-	obj, err := data.LoadJSONC(a.cfg.DataPath(name))
+	obj, err := data.LoadJSONC(a.cfg.ConfigPath(name))
 	if err != nil {
+		if os.IsNotExist(err) {
+			a.forwardUpstream(c, a.apiUpstreamAuthority(), a.shouldCollect(c), "missing_config:"+name, true)
+			return
+		}
 		c.JSON(500, gin.H{"error": err.Error(), "file": name})
 		return
 	}
-	c.JSON(200, httpx.WithGenerated(obj, includeMsg))
+	officialTextJSON(c, httpx.WithGenerated(obj, includeMsg))
 }
 
 func (a *App) sdkClient(c *gin.Context) {
-	c.JSON(200, gin.H{"ret": 0, "clientid": a.cfg.Constants.ClientID, "sdkversion": "2.1.7.17", "time": time.Now().Unix()})
+	obj, err := data.LoadJSONC(a.cfg.ConfigPath("sdkclient.json"))
+	if err != nil {
+		if os.IsNotExist(err) {
+			a.forwardUpstream(c, a.apiUpstreamAuthority(), a.shouldCollect(c), "missing_config:sdkclient.json", true)
+			return
+		}
+		c.JSON(500, gin.H{"error": err.Error(), "file": "sdkclient.json"})
+		return
+	}
+	if version := c.Query("sdkversion"); version != "" {
+		obj["sdkversion"] = version
+	}
+	c.JSON(200, httpx.WithGenerated(obj, true))
 }
 
 func (a *App) parameter(c *gin.Context) {
 	key := c.Query("key")
-	c.JSON(200, gin.H{"gameConfigParameter": gin.H{"key": key, "value": a.cfg.Parameters[key]}, "ret": 0, "time": time.Now().Unix()})
+	obj, err := data.LoadJSONC(a.cfg.ConfigPath("parameter.json"))
+	if err != nil {
+		if os.IsNotExist(err) {
+			a.forwardUpstream(c, a.apiUpstreamAuthority(), a.shouldCollect(c), "missing_config:parameter.json", true)
+			return
+		}
+		c.JSON(500, gin.H{"error": err.Error(), "file": "parameter.json"})
+		return
+	}
+	value, exists := obj[key]
+	if !exists {
+		a.forwardUpstream(c, a.apiUpstreamAuthority(), a.shouldCollect(c), "missing_parameter:"+key, true)
+		return
+	}
+	officialTextJSON(c, gin.H{"gameConfigParameter": gin.H{"key": key, "value": value}, "ret": 0, "time": time.Now().Unix()})
+}
+
+func (a *App) sensitiveClientVersion(c *gin.Context) {
+	obj, err := data.LoadJSONC(a.cfg.ConfigPath("sensitive_client_version.json"))
+	if err != nil {
+		if os.IsNotExist(err) {
+			a.forwardUpstream(c, a.apiUpstreamAuthority(), a.shouldCollect(c), "missing_config:sensitive_client_version.json", true)
+			return
+		}
+		c.JSON(500, gin.H{"error": err.Error(), "file": "sensitive_client_version.json"})
+		return
+	}
+	officialTextJSON(c, httpx.WithGenerated(obj, false))
+}
+
+func (a *App) sensitiveClient(c *gin.Context) {
+	a.dataJSON(c, "sensitive_client.json", false)
+}
+
+func (a *App) announceList(c *gin.Context) {
+	a.dataJSON(c, "announcelist.json", true)
+}
+
+func (a *App) paymentInit(c *gin.Context) {
+	obj, err := data.LoadJSONC(a.cfg.ConfigPath("payment_init.json"))
+	if err != nil {
+		if os.IsNotExist(err) {
+			a.forwardUpstream(c, a.cfg.Hosts.Passport, a.shouldCollect(c), "missing_config:payment_init.json", true)
+			return
+		}
+		c.JSON(500, gin.H{"error": err.Error(), "file": "payment_init.json"})
+		return
+	}
+	obj["request_id"] = uuid.NewString()
+	c.JSON(200, obj)
 }
 
 func (a *App) throttle(c *gin.Context) {
@@ -1484,53 +1560,6 @@ func hmacEqual(a, b string) bool {
 		v |= a[i] ^ b[i]
 	}
 	return v == 0
-}
-
-func (a *App) proxy(c *gin.Context) {
-	base, err := url.Parse(a.cfg.Hotfix.ProxyURL)
-	if err != nil || base.Scheme == "" || base.Host == "" {
-		c.JSON(500, gin.H{"error": "invalid hotfix.proxy_url"})
-		return
-	}
-	target := *base
-	target.Path = singleJoiningSlash(base.Path, c.Request.URL.Path)
-	target.RawQuery = c.Request.URL.RawQuery
-	req, err := http.NewRequestWithContext(c.Request.Context(), c.Request.Method, target.String(), nil)
-	if err != nil {
-		c.JSON(500, gin.H{"error": err.Error()})
-		return
-	}
-	for k, vals := range c.Request.Header {
-		for _, v := range vals {
-			req.Header.Add(k, v)
-		}
-	}
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		c.JSON(502, gin.H{"error": err.Error()})
-		return
-	}
-	defer resp.Body.Close()
-	for k, vals := range resp.Header {
-		for _, v := range vals {
-			c.Header(k, v)
-		}
-	}
-	c.Status(resp.StatusCode)
-	_, _ = io.Copy(c.Writer, resp.Body)
-}
-
-func singleJoiningSlash(a, b string) string {
-	aslash := strings.HasSuffix(a, "/")
-	bslash := strings.HasPrefix(b, "/")
-	switch {
-	case aslash && bslash:
-		return a + b[1:]
-	case !aslash && !bslash:
-		return a + "/" + b
-	default:
-		return a + b
-	}
 }
 
 func (a *App) websocket(c *gin.Context) {

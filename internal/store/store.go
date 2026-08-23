@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -51,6 +52,9 @@ func Open(dbURI, baseDir string) (*Store, error) {
 		return nil, err
 	}
 	if driver == "sqlite" {
+		if err := os.MkdirAll(filepath.Dir(dsn), 0o755); err != nil {
+			return nil, err
+		}
 		db.SetMaxOpenConns(1)
 		db.SetMaxIdleConns(1)
 		_, _ = db.Exec("pragma journal_mode = wal")
