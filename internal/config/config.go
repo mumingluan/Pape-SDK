@@ -8,20 +8,19 @@ import (
 )
 
 type Config struct {
-	DBURI               string            `yaml:"db_uri"`
-	DataDir             string            `yaml:"data_dir"`
-	Sdk                 Service           `yaml:"sdk"`
-	Login               LoginService      `yaml:"login"`
-	UserCenter          AccessService     `yaml:"usercenter"`
-	Game                Service           `yaml:"game"`
-	Auth                Authentication    `yaml:"authentication"`
-	Constants           Constants         `yaml:"constants"`
-	UserCenterConstants Constants         `yaml:"usercenter_constants"`
-	RealNameIdentity    RealNameIdentity  `yaml:"realname_identity"`
-	Hosts               Hosts             `yaml:"hosts"`
-	Parameters          map[string]string `yaml:"parameters"`
-	Hotfix              Hotfix            `yaml:"hotfix"`
-	SMS                 SMS               `yaml:"sms"`
+	DBURI               string           `yaml:"db_uri"`
+	ConfigDir           string           `yaml:"config_dir"`
+	Sdk                 Service          `yaml:"sdk"`
+	Login               LoginService     `yaml:"login"`
+	UserCenter          AccessService    `yaml:"usercenter"`
+	Game                Service          `yaml:"game"`
+	Proxy               Proxy            `yaml:"proxy"`
+	Auth                Authentication   `yaml:"authentication"`
+	Constants           Constants        `yaml:"constants"`
+	UserCenterConstants Constants        `yaml:"usercenter_constants"`
+	RealNameIdentity    RealNameIdentity `yaml:"realname_identity"`
+	Hosts               Hosts            `yaml:"hosts"`
+	SMS                 SMS              `yaml:"sms"`
 
 	BaseDir string `yaml:"-"`
 }
@@ -30,6 +29,16 @@ type Service struct {
 	Enabled  bool   `yaml:"enabled"`
 	BindHost string `yaml:"bindhost"`
 	BindPort int    `yaml:"bindport"`
+}
+
+type Proxy struct {
+	Enabled      bool   `yaml:"enabled"`
+	BindHost     string `yaml:"bindhost"`
+	BindPort     int    `yaml:"bindport"`
+	UseHTTP2     bool   `yaml:"usehttp2"`
+	CAPrivKey    string `yaml:"caprivkey"`
+	CACert       string `yaml:"cacert"`
+	CollectRoute bool   `yaml:"collect_route"`
 }
 
 type LoginService struct {
@@ -71,11 +80,6 @@ type Hosts struct {
 	Notice   string `yaml:"notice"`
 }
 
-type Hotfix struct {
-	Proxy    bool   `yaml:"proxy"`
-	ProxyURL string `yaml:"proxy_url"`
-}
-
 type SMS struct {
 	Provider string    `yaml:"provider"`
 	Aliyun   AliyunSMS `yaml:"aliyun"`
@@ -103,8 +107,14 @@ func Load(path string) (*Config, error) {
 		return nil, err
 	}
 	cfg.BaseDir = filepath.Dir(abs)
-	if cfg.DataDir == "" {
-		cfg.DataDir = "./data"
+	if cfg.ConfigDir == "" {
+		cfg.ConfigDir = "./config"
+	}
+	if cfg.Proxy.BindHost == "" {
+		cfg.Proxy.BindHost = "127.0.0.1"
+	}
+	if cfg.Proxy.BindPort == 0 {
+		cfg.Proxy.BindPort = 8888
 	}
 	if cfg.Constants.ClientID == 0 {
 		cfg.Constants.ClientID = 1068
@@ -143,6 +153,6 @@ func (c *Config) Resolve(path string) string {
 	return filepath.Join(c.BaseDir, path)
 }
 
-func (c *Config) DataPath(name string) string {
-	return c.Resolve(filepath.Join(c.DataDir, name))
+func (c *Config) ConfigPath(name string) string {
+	return c.Resolve(filepath.Join(c.ConfigDir, name))
 }

@@ -1,0 +1,24 @@
+{
+  "config": {
+    "adMaxRetryCount": 5,
+    "adMaximumLatency": 15,
+    "ali_log_sls_switch": 1,
+    "ali_log_switch": 1,
+    "appLogPurchaseFilter": "cloudgameshop",
+    "conversionTlogConfig": 1,
+    "create_log_file": 0,
+    "currency": [],
+    "deliver_retry_count": 5,
+    "deliver_retry_round_times": 20,
+    "emailVerify": 0,
+    "enableCustomToJson": 1,
+    "enableNewAdReport": 0,
+    "enableReportCancel": 0,
+    "enableReportRequest": 0,
+    "guest_recharge": 0,
+    "ios_idfa_minversion": "14",
+    "is_audit": 0,
+    "logcat": 0
+  },
+  "msg": "OK"
+}

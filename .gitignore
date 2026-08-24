@@ -1,3 +1,6 @@
 config.yaml
 pape-server.exe
-data.db*
+data/*.db*
+data/pape.key
+data/pape.pem
+collected_route/
