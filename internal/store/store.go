@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -154,7 +155,10 @@ create table if not exists request_log (
 		if err != nil {
 			return err
 		}
-		return s.ensureColumns()
+		if err := s.ensureColumns(); err != nil {
+			return err
+		}
+		return nil
 	}
 	_, err := s.db.Exec(`
 create table if not exists users (
@@ -211,7 +215,10 @@ create table if not exists request_log (
 	if err != nil {
 		return err
 	}
-	return s.ensureColumns()
+	if err := s.ensureColumns(); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (s *Store) LogRequest(method, host, path string, bodyBytes int64) {
@@ -338,31 +345,67 @@ func (s *Store) GetOrCreateUser(phone string) (User, bool, error) {
 		if err != nil {
 			return User{}, false, err
 		}
-		token := makeToken("pt")
+		u, err = s.touchExistingUser(u)
+		return u, false, err
+	}
+	return s.createUserWithIdentityGenerator(phone, newExternalIdentifiers)
+}
+
+const identityGenerationAttempts = 16
+
+func newExternalIdentifiers() (string, int64) {
+	return fmt.Sprintf("%d", 250000000+randInt63n(900000000)), 251000000 + randInt63n(900000)
+}
+
+func (s *Store) createUserWithIdentityGenerator(phone string, generate func() (string, int64)) (User, bool, error) {
+	now := time.Now().Unix()
+	var lastCollision error
+	for attempt := 0; attempt < identityGenerationAttempts; attempt++ {
+		openID, nid := generate()
+		u := User{Phone: phone, OpenID: openID, NID: nid, Token: makeToken("pt")}
 		refresh := makeToken("rt")
-		_, err = s.db.Exec("update users set token = ?, refresh_token = ?, last_login_at = ? where id = ?", token, refresh, time.Now().Unix(), u.ID)
-		if err != nil {
+		u.RefreshToken = sql.NullString{String: refresh, Valid: true}
+		result, err := s.db.Exec("insert into users(phone, openid, nid, token, refresh_token, created_at, last_login_at) values (?, ?, ?, ?, ?, ?, ?)", u.Phone, u.OpenID, u.NID, u.Token, refresh, now, now)
+		if err == nil {
+			u.ID, _ = result.LastInsertId()
+			return u, true, nil
+		}
+		if !isUniqueConstraint(err) {
 			return User{}, false, err
 		}
-		u.Token = token
-		u.RefreshToken = sql.NullString{String: refresh, Valid: true}
-		return u, false, nil
+		// A concurrent registration of the same phone is an existing-user
+		// result, not an OpenID/NID collision.
+		if existing, ok, lookupErr := s.userByPhone(phone); lookupErr != nil {
+			return User{}, false, lookupErr
+		} else if ok {
+			existing, touchErr := s.touchExistingUser(existing)
+			return existing, false, touchErr
+		}
+		lastCollision = err
 	}
-	now := time.Now().Unix()
-	u := User{
-		Phone:  phone,
-		OpenID: fmt.Sprintf("%d", 250000000+randInt63n(900000000)),
-		NID:    251000000 + randInt63n(900000),
-		Token:  makeToken("pt"),
-	}
+	return User{}, false, fmt.Errorf("生成唯一 OpenID/NID 失败，重试 %d 次: %w", identityGenerationAttempts, lastCollision)
+}
+
+func (s *Store) touchExistingUser(user User) (User, error) {
+	token := makeToken("pt")
 	refresh := makeToken("rt")
-	u.RefreshToken = sql.NullString{String: refresh, Valid: true}
-	res, err := s.db.Exec("insert into users(phone, openid, nid, token, refresh_token, created_at, last_login_at) values (?, ?, ?, ?, ?, ?, ?)", u.Phone, u.OpenID, u.NID, u.Token, refresh, now, now)
+	_, err := s.db.Exec("update users set token = ?, refresh_token = ?, last_login_at = ? where id = ?", token, refresh, time.Now().Unix(), user.ID)
 	if err != nil {
-		return User{}, false, err
+		return User{}, err
 	}
-	u.ID, _ = res.LastInsertId()
-	return u, true, nil
+	user.Token = token
+	user.RefreshToken = sql.NullString{String: refresh, Valid: true}
+	return user, nil
+}
+
+func isUniqueConstraint(err error) bool {
+	if err == nil {
+		return false
+	}
+	message := strings.ToLower(err.Error())
+	return strings.Contains(message, "unique constraint failed") ||
+		strings.Contains(message, "duplicate entry") ||
+		strings.Contains(message, "error 1062")
 }
 
 func (s *Store) CreateUser(phone string) (User, error) {
@@ -503,4 +546,25 @@ func scanUser(row *sql.Row) (User, bool, error) {
 		return User{}, false, nil
 	}
 	return u, err == nil, err
+}
+
+func (s *Store) UserByOpenID(openID string) (User, bool, error) {
+	openID = strings.TrimSpace(openID)
+	if openID == "" {
+		return User{}, false, errors.New("缺少 OpenID")
+	}
+	row := s.db.QueryRow("select id, phone, openid, nid, token, refresh_token, password_hash, long_token, deleted_at from users where openid = ? and deleted_at is null", openID)
+	user, ok, err := scanUser(row)
+	if err != nil || ok {
+		return user, ok, err
+	}
+	// Older builds exposed users.id (and some SDK variants use NID) as the
+	// external OpenID. Accept both legacy numeric aliases, then return the
+	// canonical users.openid value to callers.
+	legacyID, parseErr := strconv.ParseInt(openID, 10, 64)
+	if parseErr != nil || legacyID <= 0 {
+		return User{}, false, nil
+	}
+	row = s.db.QueryRow("select id, phone, openid, nid, token, refresh_token, password_hash, long_token, deleted_at from users where (id = ? or nid = ?) and deleted_at is null", legacyID, legacyID)
+	return scanUser(row)
 }

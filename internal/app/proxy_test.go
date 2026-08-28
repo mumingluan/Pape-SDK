@@ -20,7 +20,7 @@ import (
 	"testing"
 	"time"
 
-	"pape-sdk/server/internal/config"
+	"pape-sdk/internal/config"
 )
 
 func TestPapegamesHost(t *testing.T) {

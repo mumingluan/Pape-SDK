@@ -7,11 +7,17 @@ sdk:
   bindhost: "0.0.0.0"
   bindport: 8088
 
-login:
+inner:
   enabled: true
-  bindhost: "0.0.0.0"
-  bindport: 8088
-  accessaddress: "127.0.0.1:8088"
+  bindhost: "127.0.0.1"
+  bindport: 18081
+  auth_token: "replace-with-a-long-random-secret"
+
+booi_inner:
+  500058:
+    base_url: "http://127.0.0.1:18082"
+    auth_token: "replace-with-a-long-random-secret"
+    timeout_seconds: 5
 
 usercenter:
   enabled: true
@@ -19,16 +25,13 @@ usercenter:
   bindport: 8089
   accessaddress: "127.0.0.1:8089"
 
-game:
-  enabled: true
-  bindhost: "0.0.0.0"
-  bindport: 13001
-
 proxy:
   enabled: true
   bindhost: "0.0.0.0"
   bindport: 8888
   usehttp2: true
+  allowall: false
+  allowgateurl: true
   collect_route: true
   caprivkey: "./certs/rootca.key"
   cacert: "./certs/rootca.crt"

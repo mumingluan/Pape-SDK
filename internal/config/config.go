@@ -11,9 +11,9 @@ type Config struct {
 	DBURI               string           `yaml:"db_uri"`
 	ConfigDir           string           `yaml:"config_dir"`
 	Sdk                 Service          `yaml:"sdk"`
-	Login               LoginService     `yaml:"login"`
 	UserCenter          AccessService    `yaml:"usercenter"`
-	Game                Service          `yaml:"game"`
+	Inner               InnerService     `yaml:"inner"`
+	BOOIInner           map[uint32]Peer  `yaml:"booi_inner"`
 	Proxy               Proxy            `yaml:"proxy"`
 	Auth                Authentication   `yaml:"authentication"`
 	Constants           Constants        `yaml:"constants"`
@@ -31,20 +31,27 @@ type Service struct {
 	BindPort int    `yaml:"bindport"`
 }
 
+type InnerService struct {
+	Service   `yaml:",inline"`
+	AuthToken string `yaml:"auth_token"`
+}
+
+type Peer struct {
+	BaseURL        string `yaml:"base_url"`
+	AuthToken      string `yaml:"auth_token"`
+	TimeoutSeconds int    `yaml:"timeout_seconds"`
+}
+
 type Proxy struct {
 	Enabled      bool   `yaml:"enabled"`
 	BindHost     string `yaml:"bindhost"`
 	BindPort     int    `yaml:"bindport"`
 	UseHTTP2     bool   `yaml:"usehttp2"`
+	AllowAll     bool   `yaml:"allowall"`
+	AllowGateURL bool   `yaml:"allowgateurl"`
 	CAPrivKey    string `yaml:"caprivkey"`
 	CACert       string `yaml:"cacert"`
 	CollectRoute bool   `yaml:"collect_route"`
-}
-
-type LoginService struct {
-	Service       `yaml:",inline"`
-	AccessAddress string `yaml:"accessaddress"`
-	AccessHost    string `yaml:"accesshost"`
 }
 
 type AccessService struct {
@@ -116,6 +123,18 @@ func Load(path string) (*Config, error) {
 	if cfg.Proxy.BindPort == 0 {
 		cfg.Proxy.BindPort = 8888
 	}
+	if cfg.Inner.BindHost == "" {
+		cfg.Inner.BindHost = "127.0.0.1"
+	}
+	if cfg.Inner.BindPort == 0 {
+		cfg.Inner.BindPort = 18081
+	}
+	for serverID, peer := range cfg.BOOIInner {
+		if peer.TimeoutSeconds == 0 {
+			peer.TimeoutSeconds = 5
+			cfg.BOOIInner[serverID] = peer
+		}
+	}
 	if cfg.Constants.ClientID == 0 {
 		cfg.Constants.ClientID = 1068
 	}
@@ -139,9 +158,6 @@ func Load(path string) (*Config, error) {
 	}
 	if cfg.RealNameIdentity.RealID == "" {
 		cfg.RealNameIdentity.RealID = "110101199001010010"
-	}
-	if cfg.Login.AccessAddress == "" {
-		cfg.Login.AccessAddress = cfg.Login.AccessHost
 	}
 	return &cfg, nil
 }

@@ -25,7 +25,7 @@ import (
 
 	"golang.org/x/net/http2"
 
-	"pape-sdk/server/internal/config"
+	"pape-sdk/internal/config"
 )
 
 const (
@@ -34,9 +34,12 @@ const (
 )
 
 type proxyServer struct {
-	internal  http.Handler
-	tlsConfig *tls.Config
-	useHTTP2  bool
+	internal         http.Handler
+	tlsConfig        *tls.Config
+	forwardTransport *http.Transport
+	gateTargets      *proxyGateTargets
+	useHTTP2         bool
+	allowAll         bool
 }
 
 type proxyInternalContextKey struct{}
@@ -73,6 +76,14 @@ func newProxyHandler(cfg *config.Config, internal http.Handler) (http.Handler, e
 	if generated {
 		log.Printf("[proxy] generated Papegames certificate: %s, %s", leafCertPath, leafKeyPath)
 	}
+	var gateTargets *proxyGateTargets
+	if cfg.Proxy.AllowGateURL {
+		gateTargets, err = loadProxyGateTargets(cfg.ConfigPath("serverlist.json"))
+		if err != nil {
+			return nil, fmt.Errorf("load proxy gate targets: %w", err)
+		}
+		log.Printf("[proxy] loaded gate allowlist: http=%d tunnel=%d", len(gateTargets.httpAuthorities), len(gateTargets.tunnelAuthorities))
+	}
 	certificates := &proxyCertificateManager{
 		ca:          caCert,
 		caKey:       caKey,
@@ -84,11 +95,21 @@ func newProxyHandler(cfg *config.Config, internal http.Handler) (http.Handler, e
 		nextProtos = []string{"h2", "http/1.1"}
 	}
 	p := &proxyServer{
-		internal: internal,
+		internal:    internal,
+		gateTargets: gateTargets,
+		allowAll:    cfg.Proxy.AllowAll,
 		tlsConfig: &tls.Config{
 			GetCertificate: certificates.GetCertificate,
 			MinVersion:     tls.VersionTLS12,
 			NextProtos:     nextProtos,
+		},
+		forwardTransport: &http.Transport{
+			Proxy:                 nil,
+			ForceAttemptHTTP2:     cfg.Proxy.UseHTTP2,
+			MaxIdleConns:          100,
+			IdleConnTimeout:       90 * time.Second,
+			TLSHandshakeTimeout:   10 * time.Second,
+			ExpectContinueTimeout: time.Second,
 		},
 		useHTTP2: cfg.Proxy.UseHTTP2,
 	}
@@ -122,6 +143,10 @@ func (p *proxyServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		p.serveConnect(w, r)
 		return
 	}
+	if p.gateTargets.allowsHTTP(r) {
+		p.serveForwardHTTP(w, r)
+		return
+	}
 	if isPapegamesHost(requestHostname(r)) {
 		if r.URL.Scheme == "" {
 			r.URL.Scheme = "http"
@@ -129,19 +154,39 @@ func (p *proxyServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		p.serveInternal(w, r)
 		return
 	}
+	if p.allowAll {
+		p.serveForwardHTTP(w, r)
+		return
+	}
 	p.rejectNonPapegames(w, r)
 }
 
 func (p *proxyServer) serveConnect(w http.ResponseWriter, r *http.Request) {
 	host := authorityHostname(r.Host)
+	if p.gateTargets.allowsTunnel(r.Host) {
+		p.serveTunnel(w, r)
+		return
+	}
+	if isPapegamesHost(host) {
+		p.serveMITMConnect(w, r)
+		return
+	}
+	if p.allowAll {
+		p.serveTunnel(w, r)
+		return
+	}
 	connectByIP := net.ParseIP(host) != nil
-	if !connectByIP && !isPapegamesHost(host) {
+	if !connectByIP {
 		p.rejectNonPapegames(w, r)
 		return
 	}
 	if connectByIP {
 		log.Printf("[proxy] CONNECT %s uses an IP; deferring Papegames validation to TLS SNI/HTTP Host", r.Host)
 	}
+	p.serveMITMConnect(w, r)
+}
+
+func (p *proxyServer) serveMITMConnect(w http.ResponseWriter, r *http.Request) {
 	hijacker, ok := w.(http.Hijacker)
 	if !ok {
 		http.Error(w, "proxy connection does not support hijacking", http.StatusInternalServerError)
@@ -202,10 +247,6 @@ func (p *proxyServer) serveInternal(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	r = r.WithContext(context.WithValue(r.Context(), proxyInternalContextKey{}, true))
-	if !isPapegamesHost(requestHostname(r)) {
-		p.rejectNonPapegames(w, r)
-		return
-	}
 	if r.URL.Scheme == "" {
 		r.URL.Scheme = "https"
 	}

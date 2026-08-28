@@ -1,8 +1,8 @@
-# Pape SDK Server
+# Pape SDK
 
 > 当前适配游戏版本：6.0.0（3705）
 
-《恋与深空》（叠纸游戏 / Papegames）专用 SDK / 登录后端的自建服务端实现，附带原版用户中心。使用 Go 编写，提供 SDK 接口、账号登录、用户中心、公告与热更新、以及游戏 TCP 网关等能力，可搭配 SQLite 或 MySQL 使用。
+《恋与深空》（叠纸游戏 / Papegames）专用 SDK / Passport 后端的自建服务端实现，附带原版用户中心。游戏登录与 13001 TCP 服务已拆分到同级 `Pape-BOOI` 项目。
 
 > 本实现针对《恋与深空》的 SDK 协议与常量，并非叠纸游戏通用后端。
 
@@ -14,14 +14,15 @@
 - **短信**：支持虚拟验证码（开发调试）与阿里云短信真实下发两种模式。
 - **配置回源**：配置 JSON 存在时本地响应，文件或参数缺失时按客户端原始请求透明回源官服。
 - **本地代理**：内置 HTTP/HTTPS MITM 正向代理，所有 `papegames.com` 请求直接进入本进程路由，不依赖 SDK、登录或用户中心的监听端口。
-- **游戏网关**：独立 TCP 端口用于游戏连接（目前为占位 stub，尚未实现真实游戏协议）。
+- **Inner API**：在独立监听器上向 Pape-BOOI 提供 OpenID/SDK Token 校验，并通过 BOOI Inner API 查询角色。
 
 ## 目录结构
 
 ```
-cmd/pape-server/      程序入口
+cmd/pape-sdk/         程序入口
 internal/
-  app/                路由、接口处理、启动逻辑
+  app/                SDK/用户中心 Handler、领域路由组合与进程启动
+  booi/               Pape-BOOI Inner API 客户端
   config/             配置加载
   crypto/             BFF / AES 加解密
   data/               JSONC 配置文件读取
@@ -46,7 +47,7 @@ config.example.yaml   配置模板
 ### 构建
 
 ```bash
-go build -o pape-server ./cmd/pape-server
+go build -o pape-sdk ./cmd/pape-sdk
 ```
 
 ### 配置
@@ -60,7 +61,7 @@ cp config.example.yaml config.yaml
 ### 运行
 
 ```bash
-./pape-server -config config.yaml
+./pape-sdk -config config.yaml
 ```
 
 默认从当前目录的 `config.yaml` 读取配置，可用 `-config` 指定路径。
@@ -103,7 +104,8 @@ TLS SNI 和解密后的 HTTP Host 验证 Papegames 身份。非 Papegames SNI/Ho
 | --- | --- |
 | `db_uri` | 数据库连接串，支持 `sqlite://` 与 `mysql://` |
 | `config_dir` | JSON 配置文件目录 |
-| `sdk` / `login` / `usercenter` / `game` | 各服务的开关、监听地址、端口及对外访问地址 |
+| `sdk` / `usercenter` / `inner` | SDK、用户中心及 Inner API 的独立监听配置 |
+| `booi_inner.<server_id>` | 每个服务器 ID 对应的 Pape-BOOI Inner API 地址、认证 Token 和超时 |
 | `proxy` | HTTP/HTTPS 正向代理；支持 HTTP/2，并使用指定 CA 对 Papegames 域名做本地 MITM |
 | `authentication.realpassword` | 为 `true` 时 `/v1/user/login` 校验密码 |
 | `authentication.realsms` | 为 `true` 时仅接受真实生成的验证码，不接受固定虚拟码 |
@@ -142,14 +144,28 @@ TLS SNI 和解密后的 HTTP Host 验证 Papegames 身份。非 Papegames SNI/Ho
 - `GET  /usercenter`
 - `POST /usercenter/register`、`recover-password`、`change-password`、`delete-account`、`change-phone`
 
-### 游戏网关
+### Pape-BOOI 集成
 
-独立 TCP 端口（默认 `13001`）接受游戏连接。**目前为占位 stub**，仅接受连接、尚未实现真实游戏协议。
+SDK 登录响应包含 `openid` 和 SDK `token`。`config/serverlist.json` 中的 `login_url`
+与 `addr` 应分别指向 Pape-BOOI 的 `/rpc/nuanlogin` HTTP 监听和 13001 TCP 监听。
+SDK 本进程不会注册 `/rpc/nuanlogin`，也不会监听 13001。
+
+公共路由按领域集中在 `internal/app/routes.go` 注册。SDK 与 UserCenter 复用 Passport、角色、
+Accessories 和公共 stub 路由；游戏配置及 SDK 专用 stub 只挂载到 SDK 监听器。角色查询实现位于
+`internal/app/roles.go`，`/v1/user/roleinfo/get` 是主路由，其他角色路径为列表兼容接口。
+
+两端的 `inner.auth_token` / 对端 `auth_token` 必须一致，并应在部署时替换为独立随机密钥。
+
+SDK 会并发查询全部 `booi_inner.<server_id>`，将各 BOOI `player_profiles` 中的角色名、等级、
+区服和最后登录时间汇总到 `/v1/user/roleinfo/get`。单个 BOOI 暂时不可用时仍返回其他服务器的角色；
+全部 BOOI 都不可用时返回错误。
 
 ## 数据存储
 
 - **SQLite**（默认）：`db_uri: "sqlite://./data/data.db"`，开箱即用。
 - **MySQL**：`db_uri: "mysql://user:pass@tcp(host:port)/db?charset=utf8mb4&parseTime=true&loc=Local"`。
+- 新账号的 OpenID/NID 使用加密安全随机数生成；数据库唯一键冲突时最多自动重试 16 次。
+- 已有账号再次登录只轮换 Token/RefreshToken，不会改变 OpenID、NID 或内部用户 ID。
 
 ## 说明
 

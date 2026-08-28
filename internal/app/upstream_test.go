@@ -15,7 +15,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"pape-sdk/server/internal/config"
+	"pape-sdk/internal/config"
 )
 
 func TestParameterUsesConfigAndOfficialHeaders(t *testing.T) {
