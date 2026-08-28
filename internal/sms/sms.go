@@ -13,7 +13,7 @@ import (
 	util "github.com/alibabacloud-go/tea-utils/v2/service"
 	"github.com/alibabacloud-go/tea/tea"
 
-	"pape-sdk/server/internal/config"
+	"pape-sdk/internal/config"
 )
 
 type Provider interface {

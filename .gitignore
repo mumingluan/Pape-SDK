@@ -1,6 +1,9 @@
 config.yaml
-pape-server.exe
+pape-sdk.exe
 data/*.db*
 data/pape.key
 data/pape.pem
 collected_route/
+pape-sdk-*.exe
+.codex-backups/
+.codex-artifacts/

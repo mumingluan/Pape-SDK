@@ -6,7 +6,7 @@
             "zone_id": 1,
             "region": 1,
             "role": 0,
-            "name": "望舒市",
+            "name": "望舒 Metal 市",
             "extra": {
                 "addr": "100.64.0.9:13001",
                 "state": 0,
@@ -15,7 +15,32 @@
                 "watermark": 0,
                 "opentime": "2024-01-18 05:10:00",
                 "tz": 8,
-                "login_url": "http://100.64.0.9:8088/rpc",
+                "login_url": "http://100.64.0.9:8090/rpc",
+                "min_version": "1.6.1395",
+                "canary_role": 0,
+                "cluster_label": "CN",
+                "queue_switch": 1,
+                "queue": "signin_1_x3",
+                "pre_pinch_face": 0
+            },
+            "is_audit": 0
+        },
+        {
+            "id": 500059,
+            "clientid": 1068,
+            "zone_id": 2,
+            "region": 1,
+            "role": 0,
+            "name": "望舒 ECS 市",
+            "extra": {
+                "addr": "100.64.0.1:13001",
+                "state": 0,
+                "recommend": 0,
+                "hot": 0,
+                "watermark": 0,
+                "opentime": "2024-01-18 05:10:00",
+                "tz": 8,
+                "login_url": "http://100.64.0.1:8090/rpc",
                 "min_version": "1.6.1395",
                 "canary_role": 0,
                 "cluster_label": "CN",
@@ -25,5 +50,6 @@
             },
             "is_audit": 0
         }
+
     ]
 }

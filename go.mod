@@ -1,4 +1,4 @@
-module pape-sdk/server
+module pape-sdk
 
 go 1.23.0
 

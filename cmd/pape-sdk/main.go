@@ -4,7 +4,7 @@ import (
 	"flag"
 	"log"
 
-	"pape-sdk/server/internal/app"
+	"pape-sdk/internal/app"
 )
 
 func main() {
