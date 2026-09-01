@@ -1,6 +1,7 @@
 package app
 
 import (
+	"log"
 	"strconv"
 	"time"
 
@@ -18,7 +19,8 @@ func (a *App) roleList(c *gin.Context) {
 	}
 	profiles, err := a.booi.Roles(c.Request.Context(), user.OpenID)
 	if err != nil {
-		c.JSON(500, gin.H{"error": err.Error()})
+		log.Printf("[sdk-role] BOOI unavailable while listing roles openid=%q: %v", user.OpenID, err)
+		c.JSON(200, httpx.Envelope(gin.H{"roles": []any{}, "rolelist": []any{}}))
 		return
 	}
 	roles := make([]gin.H, 0, len(profiles))
@@ -57,7 +59,8 @@ func (a *App) roleInfo(c *gin.Context) {
 	}
 	profiles, err := a.booi.Roles(c.Request.Context(), user.OpenID)
 	if err != nil {
-		passportError(c, err)
+		log.Printf("[sdk-role] BOOI unavailable while reading role info openid=%q: %v", user.OpenID, err)
+		officialTextJSON(c, gin.H{"ret": 0, "roleinfo": gin.H{}, "time": time.Now().Unix()})
 		return
 	}
 	roleInfo := gin.H{}

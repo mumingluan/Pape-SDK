@@ -60,3 +60,53 @@ func TestRoleInfoComesFromConfiguredBOOI(t *testing.T) {
 		t.Fatalf("response=%s", recorder.Body.String())
 	}
 }
+
+func TestRoleEndpointsGracefullyHandleUnavailableBOOI(t *testing.T) {
+	temp := t.TempDir()
+	dataStore, err := store.Open("sqlite://"+filepath.Join(temp, "sdk.db"), temp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer dataStore.Close()
+	user, _, err := dataStore.GetOrCreateUser("13800138000")
+	if err != nil {
+		t.Fatal(err)
+	}
+	a := &App{
+		store: dataStore,
+		booi:  booi.NewPool(map[uint32]config.Peer{500058: {BaseURL: "http://127.0.0.1:1", TimeoutSeconds: 1}}),
+	}
+
+	infoRecorder := httptest.NewRecorder()
+	infoContext, _ := gin.CreateTestContext(infoRecorder)
+	infoContext.Request = httptest.NewRequest(http.MethodGet, "/roleinfo?token="+url.QueryEscape(user.Token), nil)
+	a.roleInfo(infoContext)
+	if infoRecorder.Code != http.StatusOK {
+		t.Fatalf("role info status=%d body=%s", infoRecorder.Code, infoRecorder.Body.String())
+	}
+	var infoResponse struct {
+		Ret      int            `json:"ret"`
+		RoleInfo map[string]any `json:"roleinfo"`
+	}
+	if err := json.Unmarshal(infoRecorder.Body.Bytes(), &infoResponse); err != nil || infoResponse.Ret != 0 || len(infoResponse.RoleInfo) != 0 {
+		t.Fatalf("bad unavailable role info response=%s err=%v", infoRecorder.Body.String(), err)
+	}
+
+	listRecorder := httptest.NewRecorder()
+	listContext, _ := gin.CreateTestContext(listRecorder)
+	listContext.Request = httptest.NewRequest(http.MethodGet, "/rolelist?token="+url.QueryEscape(user.Token), nil)
+	a.roleList(listContext)
+	if listRecorder.Code != http.StatusOK {
+		t.Fatalf("role list status=%d body=%s", listRecorder.Code, listRecorder.Body.String())
+	}
+	var listResponse struct {
+		Code int `json:"code"`
+		Data struct {
+			Roles    []any `json:"roles"`
+			RoleList []any `json:"rolelist"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(listRecorder.Body.Bytes(), &listResponse); err != nil || listResponse.Code != 0 || len(listResponse.Data.Roles) != 0 || len(listResponse.Data.RoleList) != 0 {
+		t.Fatalf("bad unavailable role list response=%s err=%v", listRecorder.Body.String(), err)
+	}
+}
