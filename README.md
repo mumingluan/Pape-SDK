@@ -77,12 +77,14 @@ cp config.example.yaml config.yaml
 ```yaml
 proxy:
   enabled: true
-  bindhost: "0.0.0.0"
-  bindport: 8888
-  usehttp2: true
+  bind_host: "0.0.0.0"
+  bind_port: 8888
+  use_http2: true
+  passthrough_all_unknown: false
+  passthrough_game_address: true
   collect_route: true
-  caprivkey: "./certs/rootca.key"
-  cacert: "./certs/rootca.crt"
+  ca_private_key_path: "./certs/rootca.key"
+  ca_certificate_path: "./certs/rootca.crt"
 ```
 
 首次启用代理时，服务会用指定 CA 生成 `data/pape.pem` 和 `data/pape.key`；后续启动会复用
@@ -104,27 +106,28 @@ TLS SNI 和解密后的 HTTP Host 验证 Papegames 身份。非 Papegames SNI/Ho
 | --- | --- |
 | `db_uri` | 数据库连接串，支持 `sqlite://` 与 `mysql://` |
 | `config_dir` | JSON 配置文件目录 |
-| `sdk` / `usercenter` / `inner` | SDK、用户中心及 Inner API 的独立监听配置 |
+| `patchlist.passthrough` | 为 `true` 时将 patchlist 原始请求透明转发至官方；默认 `false`，使用本地 `patchlist.json` |
+| `sdk` / `user_center` / `inner_api` | SDK、用户中心及 Inner API 的独立监听配置 |
 | `booi_inner.<server_id>` | 每个服务器 ID 对应的 Pape-BOOI Inner API 地址、认证 Token 和超时 |
 | `proxy` | HTTP/HTTPS 正向代理；支持 HTTP/2，并使用指定 CA 对 Papegames 域名做本地 MITM |
-| `authentication.realpassword` | 为 `true` 时 `/v1/user/login` 校验密码 |
-| `authentication.realsms` | 为 `true` 时仅接受真实生成的验证码，不接受固定虚拟码 |
-| `authentication.smsregister` | 为 `true` 时短信仅用于注册新账号，老账号需先设置 / 找回密码后密码登录 |
-| `constants` / `usercenter_constants` | 客户端 ID、AppKey、AES Key 等常量 |
-| `realname_identity` | 实名信息 |
+| `authentication.real_password` | 为 `true` 时 `/v1/user/login` 校验密码 |
+| `authentication.real_sms` | 为 `true` 时仅接受真实生成的验证码，不接受固定虚拟码 |
+| `authentication.sms_register` | 为 `true` 时短信仅用于注册新账号，老账号需先设置 / 找回密码后密码登录 |
+| `sdk_constants` / `user_center_constants` | 客户端 ID、AppKey、AES Key 等常量 |
+| `real_name_identity` | 实名信息 |
 | `hosts` | 各官方域名 |
 | `sms` | 短信服务商配置（当前支持阿里云） |
 
 配置接口数据位于 `config/`，包括 `sdkclient.json`、`payment_init.json`、`parameter.json`、
 `sensitive_client_version.json`、`sensitive_client.json`、`announcelist.json`、
-`patchlist.json` 等。JSON/JSONC 文件不存在时会回源；
+`patchlist.json` 等。JSON/JSONC 文件不存在时会回源；`patchlist.passthrough: true` 时即使本地文件存在，也会保留客户端原始参数和请求头并直接回源；
 `parameter.json` 中缺少客户端请求的 key 时也会回源。
 
 ### 认证模式
 
-- **虚拟短信（默认）**：`realsms: false`，可用固定虚拟验证码，便于本地开发调试。
-- **真实短信**：`realsms: true` 并填写阿里云 `access_key_id`、`access_key_secret`、`sign_name`、`template_code` 等。
-- **密码登录**：`realpassword: true` 后 `/v1/user/login` 会校验密码，密码可通过重置流程或用户中心设置。
+- **虚拟短信（默认）**：`real_sms: false`，可用固定虚拟验证码，便于本地开发调试。
+- **真实短信**：`real_sms: true` 并填写阿里云 `access_key_id`、`access_key_secret`、`sign_name`、`template_code` 等。
+- **密码登录**：`real_password: true` 后 `/v1/user/login` 会校验密码，密码可通过重置流程或用户中心设置。
 
 ## 主要接口
 

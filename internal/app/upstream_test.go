@@ -165,6 +165,40 @@ func TestMissingConfigFallsBackToOriginalUpstreamPath(t *testing.T) {
 	}
 }
 
+func TestPatchListPassthroughForwardsOriginalRequest(t *testing.T) {
+	upstream := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet || r.URL.RequestURI() != "/v1/gameconfig/patchlist?clientid=1068&sig=test" {
+			t.Errorf("upstream request = %s %q", r.Method, r.URL.RequestURI())
+		}
+		if r.Header.Get("X-Unity-Version") != "2019.4.25f1" {
+			t.Errorf("X-Unity-Version = %q", r.Header.Get("X-Unity-Version"))
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = io.WriteString(w, `{"patch":"passthrough"}`)
+	}))
+	defer upstream.Close()
+	originalClient := directUpstreamClient
+	directUpstreamClient = testUpstreamClient(t, upstream)
+	defer func() { directUpstreamClient = originalClient }()
+
+	_, port, err := net.SplitHostPort(upstream.Listener.Addr().String())
+	if err != nil {
+		t.Fatal(err)
+	}
+	a := &App{cfg: &config.Config{
+		PatchList: config.PatchList{Passthrough: true},
+		Hosts:     config.Hosts{API: "api-test.papegames.com:" + port},
+	}}
+	recorder := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(recorder)
+	c.Request = httptest.NewRequest(http.MethodGet, "http://127.0.0.1:8088/v1/gameconfig/patchlist?clientid=1068&sig=test", nil)
+	c.Request.Header.Set("X-Unity-Version", "2019.4.25f1")
+	a.patchList(c)
+	if recorder.Code != http.StatusOK || recorder.Body.String() != `{"patch":"passthrough"}` {
+		t.Fatalf("passthrough response = %d %q", recorder.Code, recorder.Body.String())
+	}
+}
+
 func testUpstreamClient(t *testing.T, server *httptest.Server) *http.Client {
 	t.Helper()
 	serverAddress := server.Listener.Addr().String()

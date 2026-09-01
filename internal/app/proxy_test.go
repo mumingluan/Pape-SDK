@@ -69,10 +69,10 @@ func TestProxyRoutesPapegamesHTTPSInternallyOverHTTP2(t *testing.T) {
 		w.WriteHeader(http.StatusNoContent)
 	})
 	cfg := &config.Config{BaseDir: temp, Proxy: config.Proxy{
-		Enabled:   true,
-		UseHTTP2:  true,
-		CACert:    certPath,
-		CAPrivKey: keyPath,
+		Enabled:           true,
+		UseHTTP2:          true,
+		CACertificatePath: certPath,
+		CAPrivateKeyPath:  keyPath,
 	}}
 	proxyHandler, err := newProxyHandler(cfg, internal)
 	if err != nil {

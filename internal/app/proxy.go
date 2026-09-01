@@ -58,11 +58,11 @@ type proxyCertificateManager struct {
 }
 
 func newProxyHandler(cfg *config.Config, internal http.Handler) (http.Handler, error) {
-	if strings.TrimSpace(cfg.Proxy.CACert) == "" || strings.TrimSpace(cfg.Proxy.CAPrivKey) == "" {
-		return nil, errors.New("proxy.cacert and proxy.caprivkey are required when proxy is enabled")
+	if strings.TrimSpace(cfg.Proxy.CACertificatePath) == "" || strings.TrimSpace(cfg.Proxy.CAPrivateKeyPath) == "" {
+		return nil, errors.New("proxy.ca_certificate_path and proxy.ca_private_key_path are required when proxy is enabled")
 	}
-	caCertPath := cfg.Resolve(cfg.Proxy.CACert)
-	caKeyPath := cfg.Resolve(cfg.Proxy.CAPrivKey)
+	caCertPath := cfg.Resolve(cfg.Proxy.CACertificatePath)
+	caKeyPath := cfg.Resolve(cfg.Proxy.CAPrivateKeyPath)
 	caCert, caKey, err := loadCA(caCertPath, caKeyPath)
 	if err != nil {
 		return nil, fmt.Errorf("load proxy CA: %w", err)
@@ -77,7 +77,7 @@ func newProxyHandler(cfg *config.Config, internal http.Handler) (http.Handler, e
 		log.Printf("[proxy] generated Papegames certificate: %s, %s", leafCertPath, leafKeyPath)
 	}
 	var gateTargets *proxyGateTargets
-	if cfg.Proxy.AllowGateURL {
+	if cfg.Proxy.PassthroughGameAddress {
 		gateTargets, err = loadProxyGateTargets(cfg.ConfigPath("serverlist.json"))
 		if err != nil {
 			return nil, fmt.Errorf("load proxy gate targets: %w", err)
@@ -97,7 +97,7 @@ func newProxyHandler(cfg *config.Config, internal http.Handler) (http.Handler, e
 	p := &proxyServer{
 		internal:    internal,
 		gateTargets: gateTargets,
-		allowAll:    cfg.Proxy.AllowAll,
+		allowAll:    cfg.Proxy.PassthroughAllUnknown,
 		tlsConfig: &tls.Config{
 			GetCertificate: certificates.GetCertificate,
 			MinVersion:     tls.VersionTLS12,

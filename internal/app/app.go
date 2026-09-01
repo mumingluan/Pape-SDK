@@ -743,6 +743,10 @@ func (a *App) privacyAgreement(c *gin.Context) {
 }
 
 func (a *App) patchList(c *gin.Context) {
+	if a.cfg.PatchList.Passthrough {
+		a.forwardUpstream(c, a.apiUpstreamAuthority(), a.shouldCollect(c), "patchlist_passthrough", true)
+		return
+	}
 	a.dataJSON(c, "patchlist.json", true)
 }
 

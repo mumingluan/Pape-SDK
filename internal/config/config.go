@@ -1,6 +1,7 @@
 package config
 
 import (
+	"bytes"
 	"os"
 	"path/filepath"
 
@@ -10,25 +11,30 @@ import (
 type Config struct {
 	DBURI               string           `yaml:"db_uri"`
 	ConfigDir           string           `yaml:"config_dir"`
+	PatchList           PatchList        `yaml:"patchlist"`
 	Sdk                 Service          `yaml:"sdk"`
-	UserCenter          AccessService    `yaml:"usercenter"`
-	Inner               InnerService     `yaml:"inner"`
+	UserCenter          AccessService    `yaml:"user_center"`
+	Inner               InnerService     `yaml:"inner_api"`
 	BOOIInner           map[uint32]Peer  `yaml:"booi_inner"`
 	Proxy               Proxy            `yaml:"proxy"`
 	Auth                Authentication   `yaml:"authentication"`
-	Constants           Constants        `yaml:"constants"`
-	UserCenterConstants Constants        `yaml:"usercenter_constants"`
-	RealNameIdentity    RealNameIdentity `yaml:"realname_identity"`
+	Constants           Constants        `yaml:"sdk_constants"`
+	UserCenterConstants Constants        `yaml:"user_center_constants"`
+	RealNameIdentity    RealNameIdentity `yaml:"real_name_identity"`
 	Hosts               Hosts            `yaml:"hosts"`
 	SMS                 SMS              `yaml:"sms"`
 
 	BaseDir string `yaml:"-"`
 }
 
+type PatchList struct {
+	Passthrough bool `yaml:"passthrough"`
+}
+
 type Service struct {
 	Enabled  bool   `yaml:"enabled"`
-	BindHost string `yaml:"bindhost"`
-	BindPort int    `yaml:"bindport"`
+	BindHost string `yaml:"bind_host"`
+	BindPort int    `yaml:"bind_port"`
 }
 
 type InnerService struct {
@@ -43,26 +49,26 @@ type Peer struct {
 }
 
 type Proxy struct {
-	Enabled      bool   `yaml:"enabled"`
-	BindHost     string `yaml:"bindhost"`
-	BindPort     int    `yaml:"bindport"`
-	UseHTTP2     bool   `yaml:"usehttp2"`
-	AllowAll     bool   `yaml:"allowall"`
-	AllowGateURL bool   `yaml:"allowgateurl"`
-	CAPrivKey    string `yaml:"caprivkey"`
-	CACert       string `yaml:"cacert"`
-	CollectRoute bool   `yaml:"collect_route"`
+	Enabled                bool   `yaml:"enabled"`
+	BindHost               string `yaml:"bind_host"`
+	BindPort               int    `yaml:"bind_port"`
+	UseHTTP2               bool   `yaml:"use_http2"`
+	PassthroughAllUnknown  bool   `yaml:"passthrough_all_unknown"`
+	PassthroughGameAddress bool   `yaml:"passthrough_game_address"`
+	CAPrivateKeyPath       string `yaml:"ca_private_key_path"`
+	CACertificatePath      string `yaml:"ca_certificate_path"`
+	CollectRoute           bool   `yaml:"collect_route"`
 }
 
 type AccessService struct {
 	Service       `yaml:",inline"`
-	AccessAddress string `yaml:"accessaddress"`
+	AccessAddress string `yaml:"access_address"`
 }
 
 type Authentication struct {
-	RealPassword bool `yaml:"realpassword"`
-	RealSMS      bool `yaml:"realsms"`
-	SMSRegister  bool `yaml:"smsregister"`
+	RealPassword bool `yaml:"real_password"`
+	RealSMS      bool `yaml:"real_sms"`
+	SMSRegister  bool `yaml:"sms_register"`
 }
 
 type Constants struct {
@@ -74,8 +80,8 @@ type Constants struct {
 }
 
 type RealNameIdentity struct {
-	RealName string `yaml:"realname"`
-	RealID   string `yaml:"realid"`
+	RealName string `yaml:"real_name"`
+	RealID   string `yaml:"real_id"`
 }
 
 type Hosts struct {
@@ -106,7 +112,9 @@ func Load(path string) (*Config, error) {
 		return nil, err
 	}
 	var cfg Config
-	if err := yaml.Unmarshal(raw, &cfg); err != nil {
+	decoder := yaml.NewDecoder(bytes.NewReader(raw))
+	decoder.KnownFields(true)
+	if err := decoder.Decode(&cfg); err != nil {
 		return nil, err
 	}
 	abs, err := filepath.Abs(path)
