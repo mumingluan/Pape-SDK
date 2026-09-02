@@ -81,7 +81,8 @@ cp config.example.yaml config.yaml
 
 代理服务可以单独启用；即使 `sdk`、`login`、`usercenter` 都设置为 `enabled: false`，所有
 `papegames.com` 及其子域名的 HTTP/HTTPS 请求仍会直接进入完整的内部业务路由。其他域名
-一律返回 `403 Forbidden`，不会连接上游。
+默认返回 `403 Forbidden`；`storage.public_host` 若为非 Papegames 域名，会按精确主机名
+加入直连白名单，HTTP 透明转发、HTTPS CONNECT 原样隧道，不会放开其他未知域名。
 
 ```yaml
 proxy:

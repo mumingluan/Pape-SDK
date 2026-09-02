@@ -43,6 +43,7 @@ type proxyServer struct {
 	allowAll         bool
 	storageHost      string
 	storageTarget    *url.URL
+	directHosts      map[string]struct{}
 }
 
 type proxyInternalContextKey struct{}
@@ -101,6 +102,7 @@ func newProxyHandler(cfg *config.Config, internal http.Handler) (http.Handler, e
 		internal:    internal,
 		gateTargets: gateTargets,
 		allowAll:    cfg.Proxy.PassthroughAllUnknown,
+		directHosts: make(map[string]struct{}),
 		tlsConfig: &tls.Config{
 			GetCertificate: certificates.GetCertificate,
 			MinVersion:     tls.VersionTLS12,
@@ -118,16 +120,21 @@ func newProxyHandler(cfg *config.Config, internal http.Handler) (http.Handler, e
 	}
 	if strings.TrimSpace(cfg.Storage.PublicHost) != "" && strings.TrimSpace(cfg.Storage.BaseURL) != "" {
 		storageHost := authorityHostname(cfg.Storage.PublicHost)
-		if !isPapegamesHost(storageHost) {
-			return nil, fmt.Errorf("storage.public_host must be a papegames.com host when proxy routing is enabled")
+		if storageHost == "" {
+			return nil, fmt.Errorf("invalid storage.public_host %q", cfg.Storage.PublicHost)
 		}
 		storageTarget, err := url.Parse(cfg.Storage.BaseURL)
 		if err != nil || storageTarget.Scheme == "" || storageTarget.Host == "" {
 			return nil, fmt.Errorf("invalid storage.base_url %q", cfg.Storage.BaseURL)
 		}
-		p.storageHost = storageHost
-		p.storageTarget = storageTarget
-		log.Printf("[proxy] storage host %s -> %s", storageHost, storageTarget)
+		if isPapegamesHost(storageHost) {
+			p.storageHost = storageHost
+			p.storageTarget = storageTarget
+			log.Printf("[proxy] storage host %s -> %s", storageHost, storageTarget)
+		} else {
+			p.directHosts[storageHost] = struct{}{}
+			log.Printf("[proxy] storage host %s added to direct allowlist", storageHost)
+		}
 	}
 	return p, nil
 }
@@ -163,6 +170,10 @@ func (p *proxyServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		p.serveForwardHTTP(w, r)
 		return
 	}
+	if p.allowsDirectHost(requestHostname(r)) {
+		p.serveForwardHTTP(w, r)
+		return
+	}
 	if isPapegamesHost(requestHostname(r)) {
 		if r.URL.Scheme == "" {
 			r.URL.Scheme = "http"
@@ -183,6 +194,10 @@ func (p *proxyServer) serveConnect(w http.ResponseWriter, r *http.Request) {
 		p.serveTunnel(w, r)
 		return
 	}
+	if p.allowsDirectHost(host) {
+		p.serveTunnel(w, r)
+		return
+	}
 	if isPapegamesHost(host) {
 		p.serveMITMConnect(w, r)
 		return
@@ -200,6 +215,12 @@ func (p *proxyServer) serveConnect(w http.ResponseWriter, r *http.Request) {
 		log.Printf("[proxy] CONNECT %s uses an IP; deferring Papegames validation to TLS SNI/HTTP Host", r.Host)
 	}
 	p.serveMITMConnect(w, r)
+}
+
+func (p *proxyServer) allowsDirectHost(host string) bool {
+	host = strings.TrimSuffix(strings.ToLower(strings.TrimSpace(host)), ".")
+	_, ok := p.directHosts[host]
+	return ok
 }
 
 func (p *proxyServer) serveMITMConnect(w http.ResponseWriter, r *http.Request) {

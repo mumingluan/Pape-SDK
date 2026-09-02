@@ -15,7 +15,7 @@
                 "watermark": 0,
                 "opentime": "2024-01-18 05:10:00",
                 "tz": 8,
-                "login_url": "http://entrance01.fatui.xyz:26105/rpc",
+                "login_url": "https://pape-loginsvr.fatui.xyz/rpc",
                 "min_version": "1.6.1395",
                 "canary_role": 0,
                 "cluster_label": "CN",

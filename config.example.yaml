@@ -8,23 +8,23 @@ patchlist:
 sdk:
   enabled: true
   bind_host: "0.0.0.0"
-  bind_port: 8088
+  bind_port: 65280
 
 inner_api:
   enabled: true
   bind_host: "127.0.0.1"
-  bind_port: 18081
+  bind_port: 65281
   auth_token: "replace-with-a-long-random-secret"
 
 booi_inner:
   500058:
-    base_url: "http://127.0.0.1:18082"
+    base_url: "http://127.0.0.1:65285"
     auth_token: "replace-with-a-long-random-secret"
     timeout_seconds: 5
 
 # Pape-Storage 管理端。admin_token 仅用于 SDK 向 Storage 签发客户端短期上传令牌。
 storage:
-  base_url: "http://127.0.0.1:18083"
+  base_url: "http://127.0.0.1:65287"
   public_host: "storage-deepspace.papegames.com"
   admin_token: "replace-with-a-long-random-admin-token"
   timeout_seconds: 5
@@ -32,13 +32,13 @@ storage:
 user_center:
   enabled: true
   bind_host: "0.0.0.0"
-  bind_port: 8089
-  access_address: "127.0.0.1:8089"
+  bind_port: 65282
+  access_address: "127.0.0.1:65282"
 
 proxy:
   enabled: true
   bind_host: "0.0.0.0"
-  bind_port: 8888
+  bind_port: 13011
   use_http2: true
   passthrough_all_unknown: false
   passthrough_game_address: true

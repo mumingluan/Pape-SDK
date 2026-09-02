@@ -79,6 +79,72 @@ func TestProxyRoutesPublicStorageHostToLocalStorage(t *testing.T) {
 	}
 }
 
+func TestProxyDirectlyForwardsExplicitNonPapegamesStorageHost(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/object.bin" {
+			t.Errorf("upstream path = %q", r.URL.Path)
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer upstream.Close()
+	target, err := url.Parse(upstream.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	p := &proxyServer{
+		directHosts:      map[string]struct{}{target.Hostname(): {}},
+		forwardTransport: http.DefaultTransport.(*http.Transport).Clone(),
+	}
+	request := httptest.NewRequest(http.MethodGet, upstream.URL+"/object.bin", nil)
+	request.Host = target.Host
+	recorder := httptest.NewRecorder()
+	p.ServeHTTP(recorder, request)
+	if recorder.Code != http.StatusNoContent {
+		t.Fatalf("status=%d body=%s", recorder.Code, recorder.Body.String())
+	}
+
+	request = httptest.NewRequest(http.MethodGet, "http://not-allowed.example/object.bin", nil)
+	request.Host = request.URL.Host
+	recorder = httptest.NewRecorder()
+	p.ServeHTTP(recorder, request)
+	if recorder.Code != http.StatusForbidden {
+		t.Fatalf("unknown host status=%d, want %d", recorder.Code, http.StatusForbidden)
+	}
+}
+
+func TestNewProxyHandlerAllowsNonPapegamesStoragePublicHost(t *testing.T) {
+	temp := t.TempDir()
+	_, caCertPEM, caKeyPEM := testCA(t)
+	certPath := filepath.Join(temp, "ca.pem")
+	keyPath := filepath.Join(temp, "ca.key")
+	if err := os.WriteFile(certPath, caCertPEM, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(keyPath, caKeyPEM, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	cfg := &config.Config{BaseDir: temp, Storage: config.Storage{
+		BaseURL: "http://127.0.0.1:65287", PublicHost: "pape-storage.fatui.xyz",
+	}, Proxy: config.Proxy{Enabled: true, CACertificatePath: certPath, CAPrivateKeyPath: keyPath}}
+	handler, err := newProxyHandler(cfg, http.NotFoundHandler())
+	if err != nil {
+		t.Fatal(err)
+	}
+	p, ok := handler.(*proxyServer)
+	if !ok {
+		t.Fatalf("proxy handler type = %T", handler)
+	}
+	if !p.allowsDirectHost("PAPE-STORAGE.FATUI.XYZ.") {
+		t.Fatal("configured storage host was not added to the direct allowlist")
+	}
+	if p.allowsDirectHost("other.fatui.xyz") {
+		t.Fatal("unconfigured sibling host was added to the direct allowlist")
+	}
+	if p.storageTarget != nil {
+		t.Fatal("non-Papegames storage host was still configured for MITM forwarding")
+	}
+}
+
 func TestProxyRoutesPapegamesHTTPSInternallyOverHTTP2(t *testing.T) {
 	temp := t.TempDir()
 	caCert, caCertPEM, caKeyPEM := testCA(t)
