@@ -17,6 +17,7 @@ import (
 	"math/big"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -40,6 +41,8 @@ type proxyServer struct {
 	gateTargets      *proxyGateTargets
 	useHTTP2         bool
 	allowAll         bool
+	storageHost      string
+	storageTarget    *url.URL
 }
 
 type proxyInternalContextKey struct{}
@@ -112,6 +115,19 @@ func newProxyHandler(cfg *config.Config, internal http.Handler) (http.Handler, e
 			ExpectContinueTimeout: time.Second,
 		},
 		useHTTP2: cfg.Proxy.UseHTTP2,
+	}
+	if strings.TrimSpace(cfg.Storage.PublicHost) != "" && strings.TrimSpace(cfg.Storage.BaseURL) != "" {
+		storageHost := authorityHostname(cfg.Storage.PublicHost)
+		if !isPapegamesHost(storageHost) {
+			return nil, fmt.Errorf("storage.public_host must be a papegames.com host when proxy routing is enabled")
+		}
+		storageTarget, err := url.Parse(cfg.Storage.BaseURL)
+		if err != nil || storageTarget.Scheme == "" || storageTarget.Host == "" {
+			return nil, fmt.Errorf("invalid storage.base_url %q", cfg.Storage.BaseURL)
+		}
+		p.storageHost = storageHost
+		p.storageTarget = storageTarget
+		log.Printf("[proxy] storage host %s -> %s", storageHost, storageTarget)
 	}
 	return p, nil
 }
@@ -242,6 +258,10 @@ func (p *proxyServer) rejectNonPapegames(w http.ResponseWriter, r *http.Request)
 
 func (p *proxyServer) serveInternal(w http.ResponseWriter, r *http.Request) {
 	started := time.Now()
+	if p.storageTarget != nil && strings.EqualFold(requestHostname(r), p.storageHost) {
+		p.serveStorageHTTP(w, r)
+		return
+	}
 	if !isPapegamesHost(requestHostname(r)) {
 		p.rejectNonPapegames(w, r)
 		return

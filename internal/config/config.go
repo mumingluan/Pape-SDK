@@ -16,6 +16,7 @@ type Config struct {
 	UserCenter          AccessService    `yaml:"user_center"`
 	Inner               InnerService     `yaml:"inner_api"`
 	BOOIInner           map[uint32]Peer  `yaml:"booi_inner"`
+	Storage             Storage          `yaml:"storage"`
 	Proxy               Proxy            `yaml:"proxy"`
 	Auth                Authentication   `yaml:"authentication"`
 	Constants           Constants        `yaml:"sdk_constants"`
@@ -45,6 +46,13 @@ type InnerService struct {
 type Peer struct {
 	BaseURL        string `yaml:"base_url"`
 	AuthToken      string `yaml:"auth_token"`
+	TimeoutSeconds int    `yaml:"timeout_seconds"`
+}
+
+type Storage struct {
+	BaseURL        string `yaml:"base_url"`
+	PublicHost     string `yaml:"public_host"`
+	AdminToken     string `yaml:"admin_token"`
 	TimeoutSeconds int    `yaml:"timeout_seconds"`
 }
 
@@ -143,6 +151,9 @@ func Load(path string) (*Config, error) {
 			peer.TimeoutSeconds = 5
 			cfg.BOOIInner[serverID] = peer
 		}
+	}
+	if cfg.Storage.TimeoutSeconds == 0 {
+		cfg.Storage.TimeoutSeconds = 5
 	}
 	if cfg.Constants.ClientID == 0 {
 		cfg.Constants.ClientID = 1068

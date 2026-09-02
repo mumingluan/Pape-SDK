@@ -22,6 +22,13 @@ booi_inner:
     auth_token: "replace-with-a-long-random-secret"
     timeout_seconds: 5
 
+# Pape-Storage 管理端。admin_token 仅用于 SDK 向 Storage 签发客户端短期上传令牌。
+storage:
+  base_url: "http://127.0.0.1:18083"
+  public_host: "storage-deepspace.papegames.com"
+  admin_token: "replace-with-a-long-random-admin-token"
+  timeout_seconds: 5
+
 user_center:
   enabled: true
   bind_host: "0.0.0.0"

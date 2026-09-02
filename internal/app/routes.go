@@ -59,6 +59,7 @@ func (a *App) mountAuthenticationRoutes(router *gin.Engine) {
 	router.Any("/v1/user/real/add", a.realAdd)
 	router.Any("/v1/user/login/check", a.loginCheck)
 	router.Any("/v1/user/youth/report/online", a.youthReport)
+	router.POST("/v1/user/oss/authorization", a.storageAuthorization)
 }
 
 func (a *App) mountCancellationRoutes(router *gin.Engine) {

@@ -17,6 +17,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -35,6 +36,46 @@ func TestPapegamesHost(t *testing.T) {
 		if got := isPapegamesHost(host); got != want {
 			t.Errorf("isPapegamesHost(%q) = %v, want %v", host, got, want)
 		}
+	}
+}
+
+func TestProxyRoutesPublicStorageHostToLocalStorage(t *testing.T) {
+	storage := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost || r.URL.Path != "/" {
+			t.Errorf("storage request = %s %s", r.Method, r.URL.Path)
+		}
+		if r.Host == "storage-deepspace.papegames.com" {
+			t.Errorf("storage request retained public Host")
+		}
+		body, _ := io.ReadAll(r.Body)
+		if string(body) != "object" {
+			t.Errorf("storage body = %q", body)
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer storage.Close()
+	target, err := url.Parse(storage.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	p := &proxyServer{
+		storageHost: "storage-deepspace.papegames.com", storageTarget: target,
+		forwardTransport: http.DefaultTransport.(*http.Transport).Clone(),
+	}
+	request := httptest.NewRequest(http.MethodPost, "https://storage-deepspace.papegames.com/", strings.NewReader("object"))
+	request.Host = "storage-deepspace.papegames.com"
+	recorder := httptest.NewRecorder()
+	p.serveInternal(recorder, request)
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", recorder.Code, recorder.Body.String())
+	}
+
+	request = httptest.NewRequest(http.MethodPost, "https://storage-deepspace.papegames.com/admin/v1/upload-tokens", nil)
+	request.Host = "storage-deepspace.papegames.com"
+	recorder = httptest.NewRecorder()
+	p.serveInternal(recorder, request)
+	if recorder.Code != http.StatusNotFound {
+		t.Fatalf("public admin status = %d", recorder.Code)
 	}
 }
 

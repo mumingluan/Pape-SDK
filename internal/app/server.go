@@ -16,6 +16,7 @@ import (
 	bffcrypto "pape-sdk/internal/crypto"
 	"pape-sdk/internal/httpx"
 	"pape-sdk/internal/sms"
+	storageclient "pape-sdk/internal/storage"
 	"pape-sdk/internal/store"
 )
 
@@ -27,6 +28,7 @@ type App struct {
 	userCenterBFF      bffcrypto.BFF
 	userCenterClientID string
 	sms                sms.Provider
+	objectStorage      *storageclient.Client
 }
 
 func Run(configPath string) error {
@@ -37,6 +39,17 @@ func Run(configPath string) error {
 	if cfg.Inner.Enabled && strings.TrimSpace(cfg.Inner.AuthToken) == "" {
 		return errors.New("inner.auth_token is required when inner is enabled")
 	}
+	var objectStorage *storageclient.Client
+	if strings.TrimSpace(cfg.Storage.BaseURL) != "" {
+		objectStorage, err = storageclient.New(
+			cfg.Storage.BaseURL,
+			cfg.Storage.AdminToken,
+			time.Duration(cfg.Storage.TimeoutSeconds)*time.Second,
+		)
+		if err != nil {
+			return err
+		}
+	}
 	dataStore, err := store.Open(cfg.DBURI, cfg.BaseDir)
 	if err != nil {
 		return err
@@ -46,7 +59,7 @@ func Run(configPath string) error {
 		return err
 	}
 	app := &App{
-		cfg: cfg, store: dataStore, sms: smsProvider, booi: booi.NewPool(cfg.BOOIInner),
+		cfg: cfg, store: dataStore, sms: smsProvider, booi: booi.NewPool(cfg.BOOIInner), objectStorage: objectStorage,
 		bff:                bffcrypto.BFF{AppID: cfg.Constants.AppID, AppKey: cfg.Constants.AppKey, AESKey: cfg.Constants.AESKey},
 		userCenterBFF:      bffcrypto.BFF{AppID: cfg.UserCenterConstants.AppID, AppKey: cfg.UserCenterConstants.AppKey, AESKey: cfg.UserCenterConstants.AESKey},
 		userCenterClientID: strconv.Itoa(cfg.UserCenterConstants.ClientID),

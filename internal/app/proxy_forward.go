@@ -138,6 +138,38 @@ func (p *proxyServer) serveForwardHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (p *proxyServer) serveStorageHTTP(w http.ResponseWriter, r *http.Request) {
+	if strings.HasPrefix(r.URL.Path, "/admin/") {
+		http.NotFound(w, r)
+		return
+	}
+	started := time.Now()
+	out := r.Clone(r.Context())
+	out.RequestURI = ""
+	out.URL.Scheme = p.storageTarget.Scheme
+	out.URL.Host = p.storageTarget.Host
+	out.Host = p.storageTarget.Host
+	removeProxyHopHeaders(out.Header)
+	out.Header.Del("Proxy-Authorization")
+	response, err := p.forwardTransport.RoundTrip(out)
+	if err != nil {
+		log.Printf("[proxy] storage %s %s failed: %v", r.Method, r.URL.RequestURI(), err)
+		http.Error(w, "storage unavailable", http.StatusBadGateway)
+		return
+	}
+	defer response.Body.Close()
+	removeProxyHopHeaders(response.Header)
+	copyProxyHeaders(w.Header(), response.Header)
+	w.WriteHeader(response.StatusCode)
+	written, copyErr := io.Copy(w, response.Body)
+	log.Printf("[proxy] storage %s %s -> %s status=%d bytes=%d duration=%s",
+		r.Method, r.URL.RequestURI(), p.storageTarget, response.StatusCode, written,
+		time.Since(started).Round(time.Millisecond))
+	if copyErr != nil {
+		log.Printf("[proxy] storage response copy failed: %v", copyErr)
+	}
+}
+
 func (p *proxyServer) serveTunnel(w http.ResponseWriter, r *http.Request) {
 	upstream, err := net.DialTimeout("tcp", r.Host, 10*time.Second)
 	if err != nil {
