@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -57,6 +58,92 @@ func TestRoleInfoComesFromConfiguredBOOI(t *testing.T) {
 	}
 	role := response.RoleInfo["1"]
 	if role.ServerID != 500058 || role.Level != 17 || role.Name != "Alice" {
+		t.Fatalf("response=%s", recorder.Body.String())
+	}
+}
+
+func TestRoleInfoAcceptsOfficialSDKCanonicalSignature(t *testing.T) {
+	booiServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_ = json.NewEncoder(w).Encode(map[string]any{"roles": []map[string]any{{
+			"account_id": 10000001, "zone_id": 1, "name": "望舒", "level": 80,
+		}}})
+	}))
+	defer booiServer.Close()
+	temp := t.TempDir()
+	dataStore, err := store.Open("sqlite://"+filepath.Join(temp, "sdk.db"), temp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer dataStore.Close()
+	user, _, err := dataStore.GetOrCreateUser("13800138000")
+	if err != nil {
+		t.Fatal(err)
+	}
+	a := &App{
+		store: dataStore,
+		booi:  booi.NewPool(map[uint32]config.Peer{500058: {BaseURL: booiServer.URL, TimeoutSeconds: 2}}),
+	}
+	requestURL := "/v1/user/roleinfo/get?token=" + url.QueryEscape(user.Token) +
+		"&nid=100000001&region=1&clientid=1068&timestamp=1788272354&sig=65b80b80a10d37ced85f55c31ec9cae3"
+	recorder := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(recorder)
+	c.Request = httptest.NewRequest(http.MethodGet, requestURL, nil)
+	a.roleInfo(c)
+	if recorder.Code != http.StatusOK || !strings.Contains(recorder.Body.String(), `"Uid":10000001`) {
+		t.Fatalf("status=%d body=%s", recorder.Code, recorder.Body.String())
+	}
+}
+
+func TestCancellationRoleListComesFromConfiguredBOOI(t *testing.T) {
+	booiServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_ = json.NewEncoder(w).Encode(map[string]any{"roles": []map[string]any{{
+			"account_id": 9001, "zone_id": 7, "name": "Alice", "level": 17,
+		}}})
+	}))
+	defer booiServer.Close()
+	temp := t.TempDir()
+	dataStore, err := store.Open("sqlite://"+filepath.Join(temp, "sdk.db"), temp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer dataStore.Close()
+	user, _, err := dataStore.GetOrCreateUser("13800138000")
+	if err != nil {
+		t.Fatal(err)
+	}
+	a := &App{
+		store: dataStore,
+		booi:  booi.NewPool(map[uint32]config.Peer{500058: {BaseURL: booiServer.URL, TimeoutSeconds: 2}}),
+	}
+	recorder := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(recorder)
+	c.Request = httptest.NewRequest(http.MethodGet, "/cancellation-role-list?token="+url.QueryEscape(user.Token), nil)
+	a.cancellationRoleList(c)
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", recorder.Code, recorder.Body.String())
+	}
+	var response struct {
+		Code int `json:"code"`
+		Data struct {
+			RoleList []struct {
+				Client     string `json:"client"`
+				ClientID   int    `json:"clientid"`
+				RoleStatus int    `json:"role_status"`
+				RoleID     uint64 `json:"role_id"`
+				RoleName   string `json:"role_name"`
+				ZoneID     uint32 `json:"zone_id"`
+				ServerID   uint32 `json:"server_id"`
+			} `json:"role_list"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(recorder.Body.Bytes(), &response); err != nil {
+		t.Fatal(err)
+	}
+	if response.Code != 0 || len(response.Data.RoleList) != 1 {
+		t.Fatalf("response=%s", recorder.Body.String())
+	}
+	role := response.Data.RoleList[0]
+	if role.Client != "恋与深空" || role.ClientID != 1068 || role.RoleStatus != 1 || role.RoleID != 9001 || role.RoleName != "Alice" || role.ZoneID != 7 || role.ServerID != 500058 {
 		t.Fatalf("response=%s", recorder.Body.String())
 	}
 }

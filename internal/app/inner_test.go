@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"pape-sdk/internal/config"
 	"pape-sdk/internal/store"
@@ -58,6 +59,32 @@ func TestSDKPublicRouterDoesNotMountNuanLogin(t *testing.T) {
 	request := httptest.NewRequest(http.MethodPost, "/rpc/nuanlogin", nil)
 	app.publicRouter(true, false).ServeHTTP(recorder, request)
 	if recorder.Code != http.StatusNotFound {
+		t.Fatalf("status=%d body=%s", recorder.Code, recorder.Body.String())
+	}
+}
+
+func TestSDKInnerBlocksGameLoginDuringCancellationCoolingOff(t *testing.T) {
+	temp := t.TempDir()
+	dataStore, err := store.Open("sqlite://"+filepath.Join(temp, "sdk.db"), temp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer dataStore.Close()
+	user, _, err := dataStore.GetOrCreateUser("13800138000")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := dataStore.SetCancellation(user.ID, cancellationStatusCoolingOff, time.Now().Add(15*24*time.Hour).Unix()); err != nil {
+		t.Fatal(err)
+	}
+	app := &App{cfg: &config.Config{Inner: config.InnerService{AuthToken: "secret"}}, store: dataStore}
+	body, _ := json.Marshal(map[string]string{"openid": user.OpenID, "token": user.Token})
+	request := httptest.NewRequest(http.MethodPost, "/inner/v1/accounts/verify-login", strings.NewReader(string(body)))
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Authorization", "Bearer secret")
+	recorder := httptest.NewRecorder()
+	app.innerRouter().ServeHTTP(recorder, request)
+	if recorder.Code != http.StatusLocked || !strings.Contains(recorder.Body.String(), "注销冷静期") {
 		t.Fatalf("status=%d body=%s", recorder.Code, recorder.Body.String())
 	}
 }

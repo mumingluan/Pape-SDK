@@ -42,7 +42,8 @@ proxy:
 authentication:
   real_password: false # true后 /v1/user/login 会校验密码，重置密码和用户中心可设置密码
   real_sms: false      # true后只接受真实生成并保存的验证码，不接受固定虚拟码
-  sms_register: false  # true后短信只可注册新账号，已有账号必须先设置/找回密码再密码登录
+  allow_register: true      # false 时未知手机号取码仍返回成功，但不发送、不签发验证码，也不能创建账号
+  sms_only_register: false  # true 时短信仅用于新号注册；无密码旧号仅可通过忘记密码首次设密
 
 sdk_constants:
   client_id: 1068

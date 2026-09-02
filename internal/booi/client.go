@@ -158,3 +158,75 @@ func (c *Client) Roles(ctx context.Context, openID string) ([]Role, error) {
 	}
 	return result.Roles, nil
 }
+
+// UnbindRoles requires every configured BOOI to confirm that its roles are no
+// longer bound to the SDK account. Successful nodes may be retried safely.
+func (p *Pool) UnbindRoles(ctx context.Context, openID string) error {
+	if p == nil || len(p.clients) == 0 {
+		return errors.New("booi_inner has no configured servers")
+	}
+	type result struct {
+		serverID uint32
+		err      error
+	}
+	results := make(chan result, len(p.clients))
+	var wait sync.WaitGroup
+	for serverID, client := range p.clients {
+		wait.Add(1)
+		go func(serverID uint32, client *Client) {
+			defer wait.Done()
+			_, err := client.UnbindRoles(ctx, openID)
+			results <- result{serverID: serverID, err: err}
+		}(serverID, client)
+	}
+	wait.Wait()
+	close(results)
+	failures := []error{}
+	for item := range results {
+		if item.err != nil {
+			failure := fmt.Errorf("BOOI server %d: %w", item.serverID, item.err)
+			failures = append(failures, failure)
+			log.Printf("[booi-inner] role unbind failed: %v", failure)
+		}
+	}
+	if len(failures) > 0 {
+		return errors.Join(failures...)
+	}
+	return nil
+}
+
+func (c *Client) UnbindRoles(ctx context.Context, openID string) (int64, error) {
+	if c.baseURL == "" {
+		return 0, fmt.Errorf("booi_inner.base_url is not configured")
+	}
+	payload, err := json.Marshal(map[string]string{"openid": openID})
+	if err != nil {
+		return 0, err
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/inner/v1/players/roles/unbind", bytes.NewReader(payload))
+	if err != nil {
+		return 0, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+c.authToken)
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return 0, fmt.Errorf("BOOI inner unavailable: %w", err)
+	}
+	defer resp.Body.Close()
+	var result struct {
+		Success      bool   `json:"success"`
+		UnboundRoles int64  `json:"unbound_roles"`
+		Error        string `json:"error"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return 0, fmt.Errorf("decode BOOI inner response: %w", err)
+	}
+	if resp.StatusCode != http.StatusOK || !result.Success {
+		if result.Error == "" {
+			result.Error = resp.Status
+		}
+		return 0, fmt.Errorf("BOOI inner: %s", result.Error)
+	}
+	return result.UnboundRoles, nil
+}

@@ -96,6 +96,7 @@ func Run(configPath string) error {
 	if started == 0 {
 		return errors.New("no service enabled")
 	}
+	go app.runCancellationFinalizer()
 	select {}
 }
 

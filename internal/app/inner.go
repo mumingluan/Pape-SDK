@@ -62,6 +62,17 @@ func (a *App) verifyInnerLogin(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, gin.H{"valid": false, "error": "OpenID 或登录凭证无效"})
 		return
 	}
+	status, _, err := a.store.Cancellation(byOpenID.ID)
+	if err != nil {
+		log.Printf("[sdk-inner] verify-login rejected reason=cancellation_status_error openid=%q: %v", request.OpenID, err)
+		c.JSON(http.StatusInternalServerError, gin.H{"valid": false, "error": "账号状态查询失败"})
+		return
+	}
+	if status == cancellationStatusCoolingOff {
+		log.Printf("[sdk-inner] verify-login rejected reason=cancellation_cooling_off openid=%q", request.OpenID)
+		c.JSON(http.StatusLocked, gin.H{"valid": false, "error": "账号处于注销冷静期（账号锁定期）"})
+		return
+	}
 	if strings.TrimSpace(request.OpenID) != byOpenID.OpenID {
 		log.Printf("[sdk-inner] verify-login accepted legacy_openid=%q canonical_openid=%q user=%d", request.OpenID, byOpenID.OpenID, byOpenID.ID)
 	}

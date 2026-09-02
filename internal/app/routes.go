@@ -62,17 +62,15 @@ func (a *App) mountAuthenticationRoutes(router *gin.Engine) {
 }
 
 func (a *App) mountCancellationRoutes(router *gin.Engine) {
-	anyRoutes(router, a.emptyStatus,
-		"/v1/user/cancellation/status",
-		"/v1/user/cancellation/handle",
-		"/v1/user/cancellation/role/check",
-		"/v1/user/cancellation/submit",
-		"/v1/user/cancellation/role/status",
-		"/v1/user/cancellation/code/verify",
-		"/v1/user/cancellation/real/check",
-		"/v1/user/cancellation/password/check",
-	)
-	router.Any("/v1/user/cancellation/role/list", a.emptyList)
+	router.Any("/v1/user/cancellation/status", a.cancellationStatus)
+	router.Any("/v1/user/cancellation/handle", a.cancellationHandle)
+	router.Any("/v1/user/cancellation/role/list", a.cancellationRoleList)
+	router.Any("/v1/user/cancellation/role/check", a.cancellationCheck)
+	router.Any("/v1/user/cancellation/submit", a.cancellationCheck)
+	router.Any("/v1/user/cancellation/role/status", a.cancellationCheck)
+	router.Any("/v1/user/cancellation/code/verify", a.cancellationCodeVerify)
+	router.Any("/v1/user/cancellation/real/check", a.cancellationRealCheck)
+	router.Any("/v1/user/cancellation/password/check", a.cancellationPasswordCheck)
 }
 
 // roleinfo/get is the client-facing server-selection response. The remaining

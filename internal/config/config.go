@@ -66,9 +66,10 @@ type AccessService struct {
 }
 
 type Authentication struct {
-	RealPassword bool `yaml:"real_password"`
-	RealSMS      bool `yaml:"real_sms"`
-	SMSRegister  bool `yaml:"sms_register"`
+	RealPassword    bool `yaml:"real_password"`
+	RealSMS         bool `yaml:"real_sms"`
+	AllowRegister   bool `yaml:"allow_register"`
+	SMSOnlyRegister bool `yaml:"sms_only_register"`
 }
 
 type Constants struct {

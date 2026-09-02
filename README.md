@@ -112,7 +112,8 @@ TLS SNI 和解密后的 HTTP Host 验证 Papegames 身份。非 Papegames SNI/Ho
 | `proxy` | HTTP/HTTPS 正向代理；支持 HTTP/2，并使用指定 CA 对 Papegames 域名做本地 MITM |
 | `authentication.real_password` | 为 `true` 时 `/v1/user/login` 校验密码 |
 | `authentication.real_sms` | 为 `true` 时仅接受真实生成的验证码，不接受固定虚拟码 |
-| `authentication.sms_register` | 为 `true` 时短信仅用于注册新账号，老账号需先设置 / 找回密码后密码登录 |
+| `authentication.allow_register` | 是否允许数据库外手机号注册；关闭后取码接口静默成功但不发送或签发验证码 |
+| `authentication.sms_only_register` | 是否将短信验证码限制为仅注册新号；已有账号必须使用密码，无密码账号仅可通过忘记密码首次设密 |
 | `sdk_constants` / `user_center_constants` | 客户端 ID、AppKey、AES Key 等常量 |
 | `real_name_identity` | 实名信息 |
 | `hosts` | 各官方域名 |
@@ -125,9 +126,21 @@ TLS SNI 和解密后的 HTTP Host 验证 Papegames 身份。非 Papegames SNI/Ho
 
 ### 认证模式
 
-- **虚拟短信（默认）**：`real_sms: false`，可用固定虚拟验证码，便于本地开发调试。
+- **虚拟短信（默认）**：`real_sms: false`，取码成功且符合账号策略时，签发手机号后六位作为虚拟验证码；未取码不能直接使用虚拟码。
 - **真实短信**：`real_sms: true` 并填写阿里云 `access_key_id`、`access_key_secret`、`sign_name`、`template_code` 等。
 - **密码登录**：`real_password: true` 后 `/v1/user/login` 会校验密码，密码可通过重置流程或用户中心设置。
+- **多设备会话**：每次成功登录创建独立设备会话。新设备登录不会覆盖其他设备的 Access Token 或 Refresh Token；刷新只轮换发起刷新的会话，已使用的 Refresh Token 立即失效。
+- **Token 生命周期**：Access Token 有效期 2 小时，Refresh Token 有效期 30 天。服务端可以撤销单个设备会话，也可以在注销或安全处置时撤销账号全部会话。
+
+注册与短信策略：
+
+| 配置状态 | 数据库外手机号 | 已有无密码账号 | 已有有密码账号 |
+| --- | --- | --- | --- |
+| `allow_register: false` | 取码接口保持成功响应，但不发送、不签发验证码，注册及短信登录均不能创建账号 | 按 `sms_only_register` 规则处理 | 按 `sms_only_register` 规则处理 |
+| `allow_register: true`、`sms_only_register: false` | 可取码并注册 | 可使用已签发的一次性验证码登录或设置密码 | 可使用密码，也可按普通短信流程登录或重置密码 |
+| `allow_register: true`、`sms_only_register: true` | 仅允许取码注册；登录接口不能借此自动建号 | 不允许短信登录，必须通过忘记密码流程首次设置密码 | 仅允许密码登录；不再发送登录/忘记密码验证码，也不能用验证码重置密码 |
+
+上述限制同时作用于真实短信和虚拟验证码。取码接口的静默成功用于避免泄露手机号是否已注册；注册、登录和重置密码处理器还会再次检查账号状态，因此手工写入验证码也不能绕过策略。换绑、注销及带有效登录凭证的账号维护取码不受 `sms_only_register` 限制。所有短信验证码由服务端签发并单次消费。
 
 ## 主要接口
 
@@ -167,8 +180,8 @@ SDK 会并发查询全部 `booi_inner.<server_id>`，将各 BOOI `player_profile
 
 - **SQLite**（默认）：`db_uri: "sqlite://./data/data.db"`，开箱即用。
 - **MySQL**：`db_uri: "mysql://user:pass@tcp(host:port)/db?charset=utf8mb4&parseTime=true&loc=Local"`。
-- 新账号的 OpenID/NID 使用加密安全随机数生成；数据库唯一键冲突时最多自动重试 16 次。
-- 已有账号再次登录只轮换 Token/RefreshToken，不会改变 OpenID、NID 或内部用户 ID。
+- `users.id`、OpenID、NID 为同一个叠纸账号 ID，从 `100000001` 开始顺序递增。
+- 设备登录凭据保存在 `auth_sessions`；已有账号再次登录会新增独立会话，不会改变账号 ID，也不会使其他设备下线。
 
 ## 说明
 

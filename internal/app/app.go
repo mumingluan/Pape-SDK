@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"crypto/md5"
 	cryptorand "crypto/rand"
 	"encoding/base64"
 	"encoding/hex"
@@ -39,12 +40,31 @@ func (a *App) form(c *gin.Context) (map[string]string, int64, error) {
 		}
 	}
 	needsSign := strings.HasPrefix(c.Request.URL.Path, "/v1/user/") || out["data"] != "" || out["timestamp"] != ""
-	if needsSign && out["sign"] == "" && out["sig"] == "" {
+	providedSign := out["sign"]
+	providedSDKSignature := out["sig"]
+	if needsSign && providedSign == "" && providedSDKSignature == "" {
 		return nil, 0, errors.New("缺少签名")
 	}
 	bff := a.bffFor(out)
-	if out["sign"] != "" && !strings.EqualFold(out["sign"], bff.Sign(out)) {
-		return nil, 0, errors.New("签名错误")
+	if providedSign != "" {
+		if !strings.EqualFold(providedSign, bff.Sign(out)) {
+			return nil, 0, errors.New("签名错误")
+		}
+	} else if providedSDKSignature != "" {
+		// SDK 2.x signs its canonical device/request context, not every visible
+		// business query field. The same sig is therefore reused for roleinfo,
+		// serverlist and parameter requests made in one timestamp. We cannot
+		// recompute that canonical input from the HTTP query alone; validate the
+		// wire shape here and rely on the encrypted payload/session token for
+		// authenticated operations. Account Center requests use the reproducible
+		// full-field signature above.
+		isAccountCenter := (a.userCenterBFF.AppID != "" && out["app_id"] == a.userCenterBFF.AppID) ||
+			(a.userCenterClientID != "" && out["clientid"] == a.userCenterClientID)
+		if isAccountCenter || !validSDKSignature(providedSDKSignature) {
+			if !strings.EqualFold(providedSDKSignature, bff.Sign(out)) {
+				return nil, 0, errors.New("签名错误")
+			}
+		}
 	}
 	c.Set("passport_bff", bff)
 	ts, _ := strconv.ParseInt(out["timestamp"], 10, 64)
@@ -58,6 +78,14 @@ func (a *App) form(c *gin.Context) (map[string]string, int64, error) {
 		}
 	}
 	return out, ts, nil
+}
+
+func validSDKSignature(signature string) bool {
+	if len(signature) != md5.Size*2 {
+		return false
+	}
+	_, err := hex.DecodeString(signature)
+	return err == nil
 }
 
 func (a *App) bffFor(out map[string]string) bffcrypto.BFF {
@@ -109,24 +137,31 @@ func normalizeChinaPhone(phone string) (string, error) {
 	return phone, nil
 }
 
-func (a *App) issueSMS(phone string) (string, error) {
-	return a.issueSMSForScene(phone, "default", "")
+func (a *App) issueSMS(phone string) (string, bool, error) {
+	return a.issueSMSForScene(phone, "default", "", false)
 }
 
-func (a *App) issueSMSForScene(phone, scene, ip string) (string, error) {
+func (a *App) issueSMSForScene(phone, scene, ip string, authenticated bool) (string, bool, error) {
 	phone, err := normalizeChinaPhone(phone)
 	if err != nil {
-		return "", err
+		return "", false, err
 	}
 	if scene == "" {
-		return "", errors.New("缺少验证码用途")
+		return "", false, errors.New("缺少验证码用途")
+	}
+	allowed, err := a.smsIssuanceAllowed(phone, scene, authenticated)
+	if err != nil {
+		return "", false, err
+	}
+	if !allowed {
+		return "", false, nil
 	}
 	if ip == "" {
 		ip = "unknown"
 	}
 	if a.cfg.Auth.RealSMS {
 		if err := a.store.CheckSMSRate(phone, ip); err != nil {
-			return "", err
+			return "", false, err
 		}
 	}
 	code := phone[len(phone)-6:]
@@ -135,10 +170,48 @@ func (a *App) issueSMSForScene(phone, scene, ip string) (string, error) {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 		if err := a.sms.SendCode(ctx, phone, code, scene); err != nil {
-			return "", err
+			return "", false, err
 		}
 	}
-	return code, a.store.IssueSMS(phone, scene, code, ip)
+	return code, true, a.store.IssueSMS(phone, scene, code, ip)
+}
+
+func (a *App) smsIssuanceAllowed(phone, scene string, authenticated bool) (bool, error) {
+	if authenticated || isAccountMaintenanceSMSScene(scene) {
+		return true, nil
+	}
+	u, exists, err := a.store.UserByPhone(phone)
+	if err != nil {
+		return false, err
+	}
+	if !exists {
+		if !a.cfg.Auth.AllowRegister {
+			return false, nil
+		}
+		return !a.cfg.Auth.SMSOnlyRegister || !strings.EqualFold(scene, "password"), nil
+	}
+	if !a.cfg.Auth.SMSOnlyRegister {
+		return true, nil
+	}
+	return strings.EqualFold(scene, "password") && !userHasPassword(u), nil
+}
+
+func isAccountMaintenanceSMSScene(scene string) bool {
+	switch strings.ToLower(strings.TrimSpace(scene)) {
+	case "bind", "change_phone", "cancellation":
+		return true
+	default:
+		return false
+	}
+}
+
+func userHasPassword(u store.User) bool {
+	return u.PasswordHash.Valid && u.PasswordHash.String != ""
+}
+
+func (a *App) authenticatedSMSRequest(form map[string]string, phone string) bool {
+	u, err := a.userFromFields(form)
+	return err == nil && u.ID > 0 && phone != ""
 }
 
 func (a *App) verifySMS(phone, code string) error {
@@ -152,9 +225,6 @@ func (a *App) verifySMSForScene(phone, scene, code string) error {
 	}
 	if scene == "" {
 		return errors.New("缺少验证码用途")
-	}
-	if !a.cfg.Auth.RealSMS && code == phone[len(phone)-6:] {
-		return nil
 	}
 	return a.store.VerifySMS(phone, scene, code)
 }
@@ -216,14 +286,19 @@ func uniqueScenes(scenes ...string) []string {
 }
 
 func (a *App) setPassword(userID int64, password string) error {
-	if err := validatePassword(password); err != nil {
-		return err
-	}
-	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	hash, err := passwordHash(password)
 	if err != nil {
 		return err
 	}
-	return a.store.SetPasswordHash(userID, string(hash))
+	return a.store.SetPasswordHash(userID, hash)
+}
+
+func passwordHash(password string) (string, error) {
+	if err := validatePassword(password); err != nil {
+		return "", err
+	}
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	return string(hash), err
 }
 
 func validatePassword(password string) error {
@@ -233,34 +308,42 @@ func validatePassword(password string) error {
 	return nil
 }
 
+var (
+	errInvalidCredentials = errors.New("用户名或密码有误")
+	dummyPasswordHash     = func() []byte {
+		hash, err := bcrypt.GenerateFromPassword([]byte("sdk-dummy-password"), bcrypt.DefaultCost)
+		if err != nil {
+			panic(err)
+		}
+		return hash
+	}()
+)
+
 func (a *App) passwordLogin(phone, password string) (store.User, error) {
-	phone, err := normalizeChinaPhone(phone)
+	normalizedPhone, normalizeErr := normalizeChinaPhone(phone)
+	var (
+		u   store.User
+		ok  bool
+		err error
+	)
+	if normalizeErr == nil {
+		u, ok, err = a.store.UserByPhone(normalizedPhone)
+		if err != nil {
+			return store.User{}, err
+		}
+	}
+	hash := dummyPasswordHash
+	validAccount := ok && u.PasswordHash.Valid && u.PasswordHash.String != ""
+	if validAccount {
+		hash = []byte(u.PasswordHash.String)
+	}
+	passwordErr := bcrypt.CompareHashAndPassword(hash, []byte(password))
+	if normalizeErr != nil || password == "" || !validAccount || passwordErr != nil {
+		return store.User{}, errInvalidCredentials
+	}
+	u, err = a.store.CreateLoginSession(u.ID)
 	if err != nil {
 		return store.User{}, err
-	}
-	if password == "" {
-		return store.User{}, errors.New("请输入密码")
-	}
-	u, ok, err := a.store.UserByPhone(phone)
-	if err != nil {
-		return store.User{}, err
-	}
-	if !ok {
-		return store.User{}, errors.New("未查询到账号信息")
-	}
-	if !u.PasswordHash.Valid || u.PasswordHash.String == "" {
-		return store.User{}, errors.New("账号未设置密码，请先找回或设置密码")
-	}
-	if err := bcrypt.CompareHashAndPassword([]byte(u.PasswordHash.String), []byte(password)); err != nil {
-		return store.User{}, errors.New("密码错误")
-	}
-	token, err := a.store.TouchLogin(u.ID)
-	if err != nil {
-		return store.User{}, err
-	}
-	u.Token = token
-	if refreshed, ok, err := a.store.UserByPhone(phone); err == nil && ok {
-		u.RefreshToken = refreshed.RefreshToken
 	}
 	return u, nil
 }
@@ -330,8 +413,7 @@ func passportError(c *gin.Context, err error) {
 	}
 	code := 1
 	if strings.Contains(info, "account not found") || strings.Contains(info, "no logged-in user") || strings.Contains(info, "未查询到账号信息") {
-		code = 1020
-		info = "未查询到账号信息"
+		info = "请求失败"
 	}
 	c.JSON(200, httpx.ErrorEnvelope(code, info))
 }
@@ -359,15 +441,17 @@ func (a *App) sendCode(c *gin.Context) {
 		passportError(c, err)
 		return
 	}
-	code, err := a.issueSMSForScene(phone, scene, c.ClientIP())
+	code, issued, err := a.issueSMSForScene(phone, scene, c.ClientIP(), a.authenticatedSMSRequest(form, phone))
 	if err != nil {
 		passportError(c, err)
 		return
 	}
-	if a.cfg.Auth.RealSMS {
+	if issued && a.cfg.Auth.RealSMS {
 		log.Printf("[sms] real code generated for %s: %s", phone, code)
 	}
-	a.mirrorSMSCode(phone, code, c.ClientIP(), scene, "account", "login", "register", "bind", "change_phone", "usercenter")
+	if issued {
+		a.mirrorSMSCode(phone, code, c.ClientIP(), scene, "account", "login", "register", "bind", "change_phone", "usercenter")
+	}
 	c.JSON(200, httpx.Envelope(nil))
 }
 
@@ -386,15 +470,17 @@ func (a *App) sendCodeWithData(c *gin.Context) {
 		passportError(c, err)
 		return
 	}
-	code, err := a.issueSMSForScene(phone, scene, c.ClientIP())
+	code, issued, err := a.issueSMSForScene(phone, scene, c.ClientIP(), a.authenticatedSMSRequest(form, phone))
 	if err != nil {
 		passportError(c, err)
 		return
 	}
-	if a.cfg.Auth.RealSMS {
+	if issued && a.cfg.Auth.RealSMS {
 		log.Printf("[sms] real code generated for %s: %s", phone, code)
 	}
-	a.mirrorSMSCode(phone, code, c.ClientIP(), scene, "account", "login", "register", "password", "bind", "change_phone", "usercenter")
+	if issued {
+		a.mirrorSMSCode(phone, code, c.ClientIP(), scene, "account", "login", "register", "password", "bind", "change_phone", "usercenter")
+	}
 	a.encrypted(c, gin.H{}, ts)
 }
 
@@ -404,17 +490,13 @@ func (a *App) accountExists(c *gin.Context) {
 		passportError(c, err)
 		return
 	}
-	phone, err := normalizeChinaPhone(phoneOf(form))
+	_, err = normalizeChinaPhone(phoneOf(form))
 	if err != nil {
 		passportError(c, err)
 		return
 	}
-	_, ok, err := a.store.UserByPhone(phone)
-	if err != nil {
-		passportError(c, err)
-		return
-	}
-	c.JSON(200, httpx.Envelope(gin.H{"exists": ok, "account_exists": ok}))
+	// Keep the legacy response shape without exposing whether the account exists.
+	c.JSON(200, httpx.Envelope(gin.H{"exists": true, "account_exists": true}))
 }
 
 func (a *App) accountCodeVerify(c *gin.Context) {
@@ -459,31 +541,42 @@ func (a *App) passwordReset(c *gin.Context) {
 	if scene == "" {
 		scene = "password"
 	}
-	if err := a.verifySMSForScene(phone, scene, form["code"]); err != nil {
-		passportError(c, err)
-		return
-	}
 	u, ok, err := a.store.UserByPhone(phone)
 	if err != nil {
 		passportError(c, err)
 		return
 	}
-	if !ok {
-		if a.cfg.Auth.RealPassword || a.cfg.Auth.SMSRegister {
-			passportError(c, errors.New("未查询到账号信息"))
-			return
+	if a.cfg.Auth.SMSOnlyRegister && (!ok || userHasPassword(u)) {
+		if form["password"] != "" {
+			if _, err := passwordHash(form["password"]); err != nil {
+				passportError(c, err)
+				return
+			}
 		}
-		u, _, err = a.store.GetOrCreateUser(phone)
-		if err != nil {
-			passportError(c, err)
-			return
-		}
+		// Do not disclose whether the account exists or already has a password.
+		a.encrypted(c, gin.H{}, ts)
+		return
 	}
-	if a.cfg.Auth.RealPassword {
-		if form["password"] == "" {
-			passportError(c, errors.New("请输入密码"))
-			return
+	if err := a.verifySMSForScene(phone, scene, form["code"]); err != nil {
+		passportError(c, err)
+		return
+	}
+	if a.cfg.Auth.RealPassword && form["password"] == "" {
+		passportError(c, errors.New("请输入密码"))
+		return
+	}
+	if !ok {
+		// Password recovery never creates a new account.
+		if form["password"] != "" {
+			if _, err := passwordHash(form["password"]); err != nil {
+				passportError(c, err)
+				return
+			}
 		}
+		a.encrypted(c, gin.H{}, ts)
+		return
+	}
+	if a.cfg.Auth.RealPassword || a.cfg.Auth.SMSOnlyRegister {
 		if err := a.setPassword(u.ID, form["password"]); err != nil {
 			passportError(c, err)
 			return
@@ -492,7 +585,7 @@ func (a *App) passwordReset(c *gin.Context) {
 	a.encrypted(c, gin.H{}, ts)
 }
 
-func (a *App) mobileRegister(c *gin.Context) { a.loginLike(c, 0) }
+func (a *App) mobileRegister(c *gin.Context) { a.loginLike(c, 1) }
 func (a *App) userLogin(c *gin.Context)      { a.loginLike(c, 0) }
 
 func (a *App) loginLike(c *gin.Context, isNew int) {
@@ -502,12 +595,9 @@ func (a *App) loginLike(c *gin.Context, isNew int) {
 		return
 	}
 	phone := phoneOf(form)
-	phone, err = normalizeChinaPhone(phone)
-	if err != nil {
-		passportError(c, err)
-		return
-	}
-	if a.cfg.Auth.RealPassword && form["password"] != "" {
+	_, passwordProvided := form["password"]
+	passwordRequired := a.cfg.Auth.RealPassword || a.cfg.Auth.SMSOnlyRegister
+	if passwordRequired && passwordProvided && isNew == 0 {
 		u, err := a.passwordLogin(phone, form["password"])
 		if err != nil {
 			passportError(c, err)
@@ -516,30 +606,49 @@ func (a *App) loginLike(c *gin.Context, isNew int) {
 		a.encrypted(c, a.loginPayload(u, "", 0), ts)
 		return
 	}
-	if a.cfg.Auth.SMSRegister {
-		scene := form["scene"]
-		if scene == "" {
-			scene = "login"
-		}
-		if err := a.verifySMSForAnyScene(phone, form["code"], scene, "login", "account", "register", "usercenter"); err != nil {
-			passportError(c, err)
+	phone, err = normalizeChinaPhone(phone)
+	if err != nil {
+		passportError(c, err)
+		return
+	}
+	existing, exists, err := a.store.UserByPhone(phone)
+	if err != nil {
+		passportError(c, err)
+		return
+	}
+	if isNew != 0 {
+		if exists && a.cfg.Auth.SMSOnlyRegister {
+			passportError(c, errors.New("该手机号不能重复注册"))
 			return
 		}
-		if _, ok, err := a.store.UserByPhone(phone); err != nil || ok {
-			if err != nil {
-				passportError(c, err)
-				return
-			}
-			passportError(c, errors.New("该账号已注册，请先设置或找回密码后使用密码登录"))
+		if !exists && !a.cfg.Auth.AllowRegister {
+			passportError(c, errors.New("当前不允许注册新账号"))
 			return
 		}
+	} else {
+		if a.cfg.Auth.SMSOnlyRegister {
+			passportError(c, errInvalidCredentials)
+			return
+		}
+		if !exists && !a.cfg.Auth.AllowRegister {
+			passportError(c, errInvalidCredentials)
+			return
+		}
+	}
+	scene := form["scene"]
+	if scene == "" {
+		scene = "login"
+	}
+	if err := a.verifySMSForAnyScene(phone, form["code"], scene, "login", "account", "register", "usercenter"); err != nil {
+		passportError(c, err)
+		return
 	}
 	u, _, err := a.store.GetOrCreateUser(phone)
 	if err != nil {
 		passportError(c, err)
 		return
 	}
-	if a.cfg.Auth.RealPassword && form["password"] != "" {
+	if passwordRequired && form["password"] != "" && (!a.cfg.Auth.SMSOnlyRegister || !userHasPassword(existing)) {
 		if err := a.setPassword(u.ID, form["password"]); err != nil {
 			passportError(c, err)
 			return
@@ -629,11 +738,8 @@ func (a *App) accountBindPhone(c *gin.Context) {
 	}
 	u, err := a.userFromFields(form)
 	if err != nil {
-		u, err = a.store.LatestUser()
-		if err != nil {
-			passportError(c, err)
-			return
-		}
+		passportError(c, err)
+		return
 	}
 	if err := a.store.UpdatePhone(u.ID, newPhone); err != nil {
 		passportError(c, err)
@@ -678,6 +784,201 @@ func (a *App) realGet(c *gin.Context) {
 }
 
 func (a *App) realAdd(c *gin.Context) { c.JSON(200, httpx.Envelope(nil)) }
+
+func (a *App) cancellationUser(c *gin.Context) (map[string]string, store.User, bool) {
+	form, _, err := a.form(c)
+	if err != nil {
+		passportError(c, err)
+		return nil, store.User{}, false
+	}
+	u, err := a.userFromFields(form)
+	if err != nil {
+		passportError(c, err)
+		return nil, store.User{}, false
+	}
+	return form, u, true
+}
+
+func (a *App) cancellationStatus(c *gin.Context) {
+	_, u, ok := a.cancellationUser(c)
+	if !ok {
+		return
+	}
+	status, cancelAt, err := a.store.Cancellation(u.ID)
+	if err != nil {
+		passportError(c, err)
+		return
+	}
+	payload := gin.H{"status": status, "cancel_at": ""}
+	if cancelAt > 0 {
+		payload["cancel_at"] = time.Unix(cancelAt, 0).Format("2006年01月02日 15:04")
+	}
+	c.JSON(200, httpx.Envelope(payload))
+}
+
+const (
+	cancellationStatusNormal     = 1
+	cancellationStatusCoolingOff = 2
+	cancellationStatusFrozen     = 3
+	cancellationStatusFailed     = 4
+
+	cancellationActionAcceptTerms  = 1
+	cancellationActionConfirmRoles = 2
+	cancellationActionSetReason    = 3
+	cancellationActionVerify       = 4
+	cancellationActionSubmit       = 5
+	cancellationActionWithdraw     = 6
+	cancellationActionFinish       = 7
+	cancellationActionResetFailure = 8
+)
+
+func (a *App) cancellationHandle(c *gin.Context) {
+	form, u, ok := a.cancellationUser(c)
+	if !ok {
+		return
+	}
+	action, _ := strconv.Atoi(form["action"])
+	status, cancelAt, err := a.store.Cancellation(u.ID)
+	if err != nil {
+		passportError(c, err)
+		return
+	}
+	responseStatus := status
+	switch action {
+	case cancellationActionAcceptTerms, cancellationActionConfirmRoles, cancellationActionSetReason, cancellationActionVerify:
+		// PC and mobile both call this endpoint while advancing through the
+		// official wizard. Only action 5 submits the cancellation application.
+		if status != cancellationStatusNormal {
+			passportError(c, errors.New("当前账号已在注销流程中"))
+			return
+		}
+		responseStatus = cancellationStatusNormal
+	case cancellationActionSubmit:
+		if status != cancellationStatusNormal {
+			passportError(c, errors.New("当前账号已在注销流程中"))
+			return
+		}
+		if err := a.store.SetCancellation(u.ID, cancellationStatusCoolingOff, time.Now().Add(15*24*time.Hour).Unix()); err != nil {
+			passportError(c, err)
+			return
+		}
+		responseStatus = cancellationStatusCoolingOff
+	case cancellationActionWithdraw:
+		if status != cancellationStatusCoolingOff {
+			passportError(c, errors.New("当前账号没有可取消的注销申请"))
+			return
+		}
+		if cancelAt > 0 && cancelAt <= time.Now().Unix() {
+			passportError(c, errors.New("注销冷静期已结束，账号正在完成注销"))
+			return
+		}
+		if err := a.store.SetCancellation(u.ID, cancellationStatusNormal, 0); err != nil {
+			passportError(c, err)
+			return
+		}
+		responseStatus = cancellationStatusNormal
+	case cancellationActionFinish:
+		// The official frontend calls action 7 from the "完成" button after
+		// action 5 has submitted the application. It closes the wizard; it is
+		// not permission to bypass the 15-day cooling-off period.
+		if status != cancellationStatusCoolingOff {
+			passportError(c, errors.New("请先提交账号注销申请"))
+			return
+		}
+		responseStatus = cancellationStatusCoolingOff
+	case cancellationActionResetFailure:
+		if status != cancellationStatusFailed {
+			passportError(c, errors.New("当前账号不处于注销失败状态"))
+			return
+		}
+		if err := a.store.SetCancellation(u.ID, cancellationStatusNormal, 0); err != nil {
+			passportError(c, err)
+			return
+		}
+		responseStatus = cancellationStatusNormal
+	default:
+		passportError(c, errors.New("未知的注销操作"))
+		return
+	}
+	c.JSON(200, httpx.Envelope(gin.H{"status": responseStatus, "valid": true}))
+}
+
+func (a *App) cancellationRoleList(c *gin.Context) {
+	_, u, ok := a.cancellationUser(c)
+	if !ok {
+		return
+	}
+	profiles, err := a.booi.Roles(c.Request.Context(), u.OpenID)
+	if err != nil {
+		log.Printf("[sdk-cancellation] BOOI unavailable while listing roles openid=%q: %v", u.OpenID, err)
+		c.JSON(200, httpx.Envelope(gin.H{"role_list": []any{}}))
+		return
+	}
+	roles := make([]gin.H, 0, len(profiles))
+	for _, profile := range profiles {
+		roles = append(roles, gin.H{
+			"client":      "恋与深空",
+			"clientid":    1068,
+			"role_status": 1,
+			"role_id":     profile.AccountID,
+			"role_name":   profile.Name,
+			"zone_id":     profile.ZoneID,
+			"server_id":   profile.ServerID,
+			"level":       profile.Level,
+		})
+	}
+	c.JSON(200, httpx.Envelope(gin.H{"role_list": roles}))
+}
+
+func (a *App) cancellationCheck(c *gin.Context) {
+	if _, _, ok := a.cancellationUser(c); !ok {
+		return
+	}
+	c.JSON(200, httpx.Envelope(gin.H{"status": 1, "valid": true, "role_status": 1}))
+}
+
+func (a *App) cancellationCodeVerify(c *gin.Context) {
+	form, u, ok := a.cancellationUser(c)
+	if !ok {
+		return
+	}
+	if err := a.verifySMSForAnyScene(u.Phone, form["code"], "cancellation", "account", "usercenter"); err != nil {
+		passportError(c, err)
+		return
+	}
+	c.JSON(200, httpx.Envelope(gin.H{"valid": true}))
+}
+
+func (a *App) cancellationRealCheck(c *gin.Context) {
+	form, _, ok := a.cancellationUser(c)
+	if !ok {
+		return
+	}
+	valid := strings.TrimSpace(form["realname"]) == a.cfg.RealNameIdentity.RealName && strings.TrimSpace(form["realid"]) == a.cfg.RealNameIdentity.RealID
+	if !valid {
+		passportError(c, errors.New("实名信息错误"))
+		return
+	}
+	c.JSON(200, httpx.Envelope(gin.H{"authstatus": 3, "realinfostatus": true}))
+}
+
+func (a *App) cancellationPasswordCheck(c *gin.Context) {
+	form, u, ok := a.cancellationUser(c)
+	if !ok {
+		return
+	}
+	account, err := normalizeChinaPhone(phoneOf(form))
+	hash := dummyPasswordHash
+	if u.PasswordHash.Valid && u.PasswordHash.String != "" {
+		hash = []byte(u.PasswordHash.String)
+	}
+	passwordErr := bcrypt.CompareHashAndPassword(hash, []byte(form["password"]))
+	if err != nil || account != u.Phone || !u.PasswordHash.Valid || u.PasswordHash.String == "" || passwordErr != nil {
+		passportError(c, errInvalidCredentials)
+		return
+	}
+	c.JSON(200, httpx.Envelope(gin.H{"valid": true}))
+}
 
 func (a *App) emptyStatus(c *gin.Context) {
 	c.JSON(200, httpx.Envelope(gin.H{"status": 0, "valid": true}))
@@ -976,12 +1277,12 @@ func (a *App) userCenterSendCode(c *gin.Context) {
 		return
 	}
 	scene := c.DefaultPostForm("scene", "usercenter")
-	code, err := a.issueSMSForScene(phone, scene, c.ClientIP())
+	code, issued, err := a.issueSMSForScene(phone, scene, c.ClientIP(), false)
 	if err != nil {
 		a.userCenterResult(c, err)
 		return
 	}
-	if a.cfg.Auth.RealSMS {
+	if issued && a.cfg.Auth.RealSMS {
 		log.Printf("[sms] real code generated for %s: %s", phone, code)
 	}
 	a.userCenterResult(c, nil)
@@ -999,17 +1300,30 @@ func (a *App) userCenterRegister(c *gin.Context) {
 		a.userCenterResult(c, err)
 		return
 	}
+	_, exists, err := a.store.UserByPhone(phone)
+	if err != nil {
+		a.userCenterResult(c, err)
+		return
+	}
+	if (!exists && !a.cfg.Auth.AllowRegister) || (exists && a.cfg.Auth.SMSOnlyRegister) {
+		a.userCenterResult(c, errors.New("当前手机号不能注册"))
+		return
+	}
 	if err := a.verifySMSForScene(phone, "register", code); err != nil {
 		a.userCenterResult(c, err)
 		return
 	}
-	u, err := a.store.CreateUser(phone)
+	u, created, err := a.store.GetOrCreateUser(phone)
 	if err != nil {
 		a.userCenterResult(c, err)
 		return
 	}
 	if password != "" {
-		err = a.setPassword(u.ID, password)
+		if created {
+			err = a.setPassword(u.ID, password)
+		} else {
+			_, err = passwordHash(password)
+		}
 	}
 	a.userCenterResult(c, err)
 }
@@ -1030,17 +1344,31 @@ func (a *App) userCenterRecoverPassword(c *gin.Context) {
 		a.userCenterResult(c, errors.New("请输入密码"))
 		return
 	}
-	if err := a.verifySMSForScene(phone, "password", code); err != nil {
-		a.userCenterResult(c, err)
-		return
-	}
 	u, ok, err := a.store.UserByPhone(phone)
 	if err != nil {
 		a.userCenterResult(c, err)
 		return
 	}
+	if a.cfg.Auth.SMSOnlyRegister && (!ok || userHasPassword(u)) {
+		if _, err := passwordHash(password); err != nil {
+			a.userCenterResult(c, err)
+			return
+		}
+		a.userCenterResult(c, nil)
+		return
+	}
+	if err := a.verifySMSForScene(phone, "password", code); err != nil {
+		a.userCenterResult(c, err)
+		return
+	}
 	if !ok {
-		a.userCenterResult(c, errors.New("未查询到账号信息"))
+		// Match the successful recovery response without creating an account.
+		_, err = passwordHash(password)
+		if err != nil {
+			a.userCenterResult(c, err)
+			return
+		}
+		a.userCenterResult(c, nil)
 		return
 	}
 	a.userCenterResult(c, a.setPassword(u.ID, password))
@@ -1085,11 +1413,6 @@ func (a *App) userCenterChangePhone(c *gin.Context) {
 	}
 	oldPhone, newPhone, password, code := c.PostForm("old_phone"), c.PostForm("new_phone"), c.PostForm("password"), c.PostForm("code")
 	var err error
-	oldPhone, err = normalizeChinaPhone(oldPhone)
-	if err != nil {
-		a.userCenterResult(c, err)
-		return
-	}
 	newPhone, err = normalizeChinaPhone(newPhone)
 	if err != nil {
 		a.userCenterResult(c, err)
