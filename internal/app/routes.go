@@ -159,6 +159,11 @@ func (a *App) mountGameConfigRoutes(router *gin.Engine) {
 func (a *App) mountSharedStubRoutes(router *gin.Engine) {
 	router.Any("/v1/log/sendtlog", func(c *gin.Context) { c.JSON(200, gin.H{"ret": 0, "time": time.Now().Unix()}) })
 	router.Any("/v1/risk/biz/init", func(c *gin.Context) { c.JSON(200, httpx.Envelope(nil)) })
+	anyRoutes(router, a.emptyStatus,
+		"/v1/risk/captcha/g/check",
+		"/v1/risk/phone/check",
+		"/v1/risk/code/check",
+	)
 }
 
 func (a *App) mountSDKOnlyStubRoutes(router *gin.Engine) {

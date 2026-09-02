@@ -21,6 +21,12 @@ func (a *App) innerRouter() *gin.Engine {
 	})
 	inner := router.Group("/inner/v1", a.innerAuth())
 	inner.POST("/accounts/verify-login", a.verifyInnerLogin)
+	inner.GET("/admin/accounts", a.listAdminAccounts)
+	inner.POST("/admin/accounts", a.createAdminAccount)
+	inner.GET("/admin/accounts/:id", a.getAdminAccount)
+	inner.PATCH("/admin/accounts/:id", a.updateAdminAccount)
+	inner.DELETE("/admin/accounts/:id", a.deleteAdminAccount)
+	inner.POST("/admin/accounts/:id/session", a.issueAdminSession)
 	return router
 }
 

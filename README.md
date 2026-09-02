@@ -2,7 +2,7 @@
 
 > 当前适配游戏版本：6.0.0（3705）
 
-《恋与深空》（叠纸游戏 / Papegames）专用 SDK / Passport 后端的自建服务端实现，附带原版用户中心。游戏登录与 13001 TCP 服务已拆分到同级 `Pape-BOOI` 项目。
+《恋与深空》（叠纸游戏 / Papegames）专用 SDK / Passport 后端的自建服务端实现，用户中心由同级 `Pape-Reg` React 工程构建。游戏登录与 13001 TCP 服务已拆分到同级 `Pape-BOOI` 项目。
 
 > 本实现针对《恋与深空》的 SDK 协议与常量，并非叠纸游戏通用后端。
 
@@ -10,7 +10,7 @@
 
 - **SDK 服务**：客户端初始化、服务器列表、参数下发、隐私协议、敏感词、热更新补丁列表等接口。
 - **账号登录**：手机短信注册 / 登录、密码登录、Token 刷新、实名信息、风控 SecureToken 等 passport 接口，请求 / 响应遵循 BFF 加密。
-- **用户中心**：内置《恋与深空》原版用户中心网页端（`static/usercenter`），支持注册、找回密码、修改密码、换绑手机号、注销账号。
+- **用户中心**：使用同级 `Pape-Reg` 的 React 源码构建到 `static/usercenter`，支持注册、找回密码、修改密码、换绑手机号、注销账号。
 - **短信**：支持虚拟验证码（开发调试）与阿里云短信真实下发两种模式。
 - **配置回源**：配置 JSON 存在时本地响应，文件或参数缺失时按客户端原始请求透明回源官服。
 - **本地代理**：内置 HTTP/HTTPS MITM 正向代理，所有 `papegames.com` 请求直接进入本进程路由，不依赖 SDK、登录或用户中心的监听端口。
@@ -32,7 +32,8 @@ internal/
 static/
   contracts/          协议页面
   notices/            公告页面
-  usercenter/         用户中心前端
+  usercenter/         Pape-Reg 的构建产物
+scripts/build.ps1     前端与 SDK 的统一构建脚本
 config/               服务器列表、公告、热更新补丁等 JSON 配置
 data/                 SQLite 数据库及自动生成的代理叶证书
 config.example.yaml   配置模板
@@ -43,12 +44,21 @@ config.example.yaml   配置模板
 ### 环境要求
 
 - Go 1.23+
+- Node.js 与 npm（用于构建同级 `Pape-Reg`）
 
 ### 构建
 
-```bash
-go build -o pape-sdk ./cmd/pape-sdk
+```powershell
+.\scripts\build.ps1
 ```
+
+脚本默认从 `..\Pape-Reg` 构建 React 前端到 `static\usercenter`，然后构建
+`pape-sdk.exe`。首次运行会先把原有用户中心完整备份到
+`..\frontend-backup\usercenter-original`，之后不会覆盖该备份。若前端工程不在默认位置，可用
+`-FrontendSource` 指定；只构建前端时可加 `-SkipBackend`。
+
+用户中心的 API 请求使用当前页面的同源地址，因此 SDK 更换域名、IP、端口或部署在反向代理
+后都不需要重新配置、重新编译前端，也不会在前端构建产物中写入服务器地址。
 
 ### 配置
 
@@ -175,6 +185,12 @@ Accessories 和公共 stub 路由；游戏配置及 SDK 专用 stub 只挂载到
 SDK 会并发查询全部 `booi_inner.<server_id>`，将各 BOOI `player_profiles` 中的角色名、等级、
 区服和最后登录时间汇总到 `/v1/user/roleinfo/get`。单个 BOOI 暂时不可用时仍返回其他服务器的角色；
 全部 BOOI 都不可用时返回错误。
+
+### MUIP 管理接口
+
+启用 `inner_api` 后，`/inner/v1/admin/accounts` 为 Pape-MUIP 提供账号查询、创建、手机号或
+密码修改、令牌撤销、临时会话签发和删除。该接口只存在于 Inner 监听器并复用 Bearer
+Token 鉴权，不会挂载到公共 SDK 或用户中心监听器。
 
 ## 数据存储
 
