@@ -190,9 +190,9 @@ SDK 会并发查询全部 `booi_inner.<server_id>`，将各 BOOI `player_profile
 
 ### MUIP 管理接口
 
-启用 `inner_api` 后，`/inner/v1/admin/accounts` 为 Pape-MUIP 提供账号查询、创建、手机号或
-密码修改、令牌撤销、临时会话签发和删除。该接口只存在于 Inner 监听器并复用 Bearer
-Token 鉴权，不会挂载到公共 SDK 或用户中心监听器。
+启用 `inner_api` 后，`/inner/v1/admin/accounts` 为 Pape-MUIP 提供账号查询、创建、手机号
+修改、独立的密码修改、全部设备登出和删除。管理端不提供登录凭证签发接口。该接口只存在于
+Inner 监听器并复用 Bearer Token 鉴权，不会挂载到公共 SDK 或用户中心监听器。
 
 ## 数据存储
 
