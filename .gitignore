@@ -5,5 +5,7 @@ data/pape.key
 data/pape.pem
 collected_route/
 pape-sdk-*.exe
+*.exe~
 .codex-backups/
 .codex-artifacts/
+/AGENTS.md

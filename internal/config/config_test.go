@@ -61,10 +61,10 @@ func TestExampleConfigUsesCurrentSchema(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if cfg.Sdk.BindPort != 8088 || cfg.Inner.BindPort != 18081 || cfg.UserCenter.BindPort != 8089 || cfg.Proxy.BindPort != 8888 {
+	if cfg.Sdk.BindPort != 65280 || cfg.Inner.BindPort != 65281 || cfg.UserCenter.BindPort != 65282 || cfg.Proxy.BindPort != 13011 {
 		t.Fatalf("unexpected example listeners: sdk=%d inner=%d user_center=%d proxy=%d", cfg.Sdk.BindPort, cfg.Inner.BindPort, cfg.UserCenter.BindPort, cfg.Proxy.BindPort)
 	}
-	if cfg.Storage.BaseURL != "http://127.0.0.1:18083" || cfg.Storage.PublicHost != "storage-deepspace.papegames.com" {
+	if cfg.Storage.Endpoint != "https://storage-deepspace.papegames.com" || cfg.Storage.ProxyBaseURL != "http://127.0.0.1:65287" || cfg.Storage.PublicHost != "storage-deepspace.papegames.com" {
 		t.Fatalf("unexpected storage config: %+v", cfg.Storage)
 	}
 }

@@ -40,12 +40,15 @@ func Run(configPath string) error {
 		return errors.New("inner.auth_token is required when inner is enabled")
 	}
 	var objectStorage *storageclient.Client
-	if strings.TrimSpace(cfg.Storage.BaseURL) != "" {
-		objectStorage, err = storageclient.New(
-			cfg.Storage.BaseURL,
-			cfg.Storage.AdminToken,
-			time.Duration(cfg.Storage.TimeoutSeconds)*time.Second,
-		)
+	if strings.TrimSpace(cfg.Storage.Endpoint) != "" {
+		objectStorage, err = storageclient.New(storageclient.Options{
+			Endpoint: cfg.Storage.Endpoint, PublicBaseURL: cfg.Storage.PublicBaseURL,
+			Bucket: cfg.Storage.Bucket, Region: cfg.Storage.Region,
+			AccessKeyID: cfg.Storage.AccessKeyID, AccessKeySecret: cfg.Storage.AccessKeySecret,
+			SecurityToken:  cfg.Storage.SecurityToken,
+			PolicyTTL:      time.Duration(cfg.Storage.PolicyTTLSeconds) * time.Second,
+			MaxUploadBytes: cfg.Storage.MaxUploadBytes,
+		})
 		if err != nil {
 			return err
 		}

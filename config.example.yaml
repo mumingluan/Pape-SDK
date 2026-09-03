@@ -22,12 +22,20 @@ booi_inner:
     auth_token: "replace-with-a-long-random-secret"
     timeout_seconds: 5
 
-# Pape-Storage 管理端。admin_token 仅用于 SDK 向 Storage 签发客户端短期上传令牌。
+# 标准阿里云 OSS PostObject V4 配置。真实 OSS 的 endpoint 通常为
+# https://<bucket>.oss-<region>.aliyuncs.com；Pape-Storage 使用同一协议。
 storage:
-  base_url: "http://127.0.0.1:65287"
+  endpoint: "https://storage-deepspace.papegames.com"
+  public_base_url: "https://storage-deepspace.papegames.com"
+  bucket: "pape"
+  region: "cn-hangzhou"
+  access_key_id: "replace-with-oss-access-key-id"
+  access_key_secret: "replace-with-oss-access-key-secret"
+  security_token: "" # 使用阿里云 STS 临时凭证时填写
+  policy_ttl_seconds: 1200
+  max_upload_bytes: 268435456
+  proxy_base_url: "http://127.0.0.1:65287" # 直连真实 OSS 时留空
   public_host: "storage-deepspace.papegames.com"
-  admin_token: "replace-with-a-long-random-admin-token"
-  timeout_seconds: 5
 
 user_center:
   enabled: true

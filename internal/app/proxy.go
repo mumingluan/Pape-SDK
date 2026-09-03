@@ -118,16 +118,22 @@ func newProxyHandler(cfg *config.Config, internal http.Handler) (http.Handler, e
 		},
 		useHTTP2: cfg.Proxy.UseHTTP2,
 	}
-	if strings.TrimSpace(cfg.Storage.PublicHost) != "" && strings.TrimSpace(cfg.Storage.BaseURL) != "" {
-		storageHost := authorityHostname(cfg.Storage.PublicHost)
+	storageAuthority := strings.TrimSpace(cfg.Storage.PublicHost)
+	if storageAuthority == "" {
+		if endpoint, err := url.Parse(strings.TrimSpace(cfg.Storage.Endpoint)); err == nil {
+			storageAuthority = endpoint.Host
+		}
+	}
+	if storageAuthority != "" {
+		storageHost := authorityHostname(storageAuthority)
 		if storageHost == "" {
-			return nil, fmt.Errorf("invalid storage.public_host %q", cfg.Storage.PublicHost)
+			return nil, fmt.Errorf("invalid storage public host %q", storageAuthority)
 		}
-		storageTarget, err := url.Parse(cfg.Storage.BaseURL)
-		if err != nil || storageTarget.Scheme == "" || storageTarget.Host == "" {
-			return nil, fmt.Errorf("invalid storage.base_url %q", cfg.Storage.BaseURL)
-		}
-		if isPapegamesHost(storageHost) {
+		if strings.TrimSpace(cfg.Storage.ProxyBaseURL) != "" && isPapegamesHost(storageHost) {
+			storageTarget, err := url.Parse(cfg.Storage.ProxyBaseURL)
+			if err != nil || storageTarget.Scheme == "" || storageTarget.Host == "" {
+				return nil, fmt.Errorf("invalid storage.proxy_base_url %q", cfg.Storage.ProxyBaseURL)
+			}
 			p.storageHost = storageHost
 			p.storageTarget = storageTarget
 			log.Printf("[proxy] storage host %s -> %s", storageHost, storageTarget)

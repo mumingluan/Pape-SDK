@@ -119,7 +119,7 @@ TLS SNI 和解密后的 HTTP Host 验证 Papegames 身份。非 Papegames SNI/Ho
 | `patchlist.passthrough` | 为 `true` 时将 patchlist 原始请求透明转发至官方；默认 `false`，使用本地 `patchlist.json` |
 | `sdk` / `user_center` / `inner_api` | SDK、用户中心及 Inner API 的独立监听配置 |
 | `booi_inner.<server_id>` | 每个服务器 ID 对应的 Pape-BOOI Inner API 地址、认证 Token 和超时 |
-| `storage` | Pape-Storage 管理端地址、公开代理 Host、管理员 Token 和请求超时；管理员 Token 只用于服务端签发短期上传令牌 |
+| `storage` | OSS PostObject V4：上传 endpoint、公开 URL、Bucket、Region、AccessKey、policy 有效期与大小限制；`proxy_base_url` 仅用于本地 Pape-Storage |
 | `proxy` | HTTP/HTTPS 正向代理；支持 HTTP/2，并使用指定 CA 对 Papegames 域名做本地 MITM |
 | `authentication.real_password` | 为 `true` 时 `/v1/user/login` 校验密码 |
 | `authentication.real_sms` | 为 `true` 时仅接受真实生成的验证码，不接受固定虚拟码 |
@@ -161,7 +161,7 @@ TLS SNI 和解密后的 HTTP Host 验证 Papegames 身份。非 Papegames SNI/Ho
 - `POST /v1/user/account/send/code`、`POST /v1/user/exists/send/code`
 - `POST /v1/user/mobile/register`、`POST /v1/user/login`
 - `POST /v1/user/login/token/refresh`、`/v1/user/password/reset`
-- `POST /v1/user/oss/authorization`（签发 Pape-Storage 临时上传表单）
+- `POST /v1/user/oss/authorization`（为真实阿里云 OSS 或兼容服务签发 PostObject V4 上传表单）
 - `GET  /v1/gameconfig/serverlist`、`/entries`、`/privacyagreement`、`/patchlist`、`/parameter`
 - `GET  /v1/conf/sdkclient`
 - `POST /v1/payment/init`

@@ -18,31 +18,11 @@ import (
 	"pape-sdk/internal/store"
 )
 
-func TestStorageAuthorizationUsesBFFAndStorageAdminAPI(t *testing.T) {
-	storageServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/admin/v1/upload-tokens" || r.Header.Get("Authorization") != "Bearer admin-secret" {
-			http.Error(w, "unauthorized", http.StatusUnauthorized)
-			return
-		}
-		var request storageclient.AcquireRequest
-		if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
-			t.Fatal(err)
-		}
-		if request.ChannelID != "LocalDataRecord" || request.Category != "CommonBiz/account" ||
-			request.ObjectName != "HandBook_2_82797752.bin" || request.Extension != "bin" {
-			t.Fatalf("storage request = %+v", request)
-		}
-		_ = json.NewEncoder(w).Encode(storageclient.AcquireResponse{
-			Address: "https://storage-deepspace.papegames.com",
-			URL:     "https://storage-deepspace.papegames.com/CommonBiz/account/HandBook_2_82797752.bin",
-			AddForm: map[string]string{
-				"key": "CommonBiz/account/HandBook_2_82797752.bin", "x-oss-security-token": "temporary",
-			},
-			AddHeader: map[string]string{"Date": "Wed, 02 Sep 2026 09:22:35 GMT"},
-		})
-	}))
-	defer storageServer.Close()
-	storageClient, err := storageclient.New(storageServer.URL, "admin-secret", time.Second)
+func TestStorageAuthorizationReturnsAliyunOSSPostObjectV4Form(t *testing.T) {
+	storageClient, err := storageclient.New(storageclient.Options{
+		Endpoint: "https://storage-deepspace.papegames.com", Region: "cn-hangzhou",
+		AccessKeyID: "local-access-key", AccessKeySecret: "local-secret", PolicyTTL: time.Minute,
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -98,7 +78,7 @@ func TestStorageAuthorizationUsesBFFAndStorageAdminAPI(t *testing.T) {
 		t.Fatal(err)
 	}
 	if decrypted["address"] != "https://storage-deepspace.papegames.com" ||
-		!strings.Contains(decrypted["add_form"], "temporary") {
+		!strings.Contains(decrypted["add_form"], "OSS4-HMAC-SHA256") {
 		t.Fatalf("decrypted response = %+v", decrypted)
 	}
 }

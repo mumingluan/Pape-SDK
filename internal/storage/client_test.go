@@ -2,41 +2,67 @@ package storage
 
 import (
 	"context"
+	"crypto/hmac"
+	"encoding/base64"
 	"encoding/json"
-	"net/http"
-	"net/http/httptest"
 	"testing"
 	"time"
 )
 
-func TestAcquire(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/admin/v1/upload-tokens" || r.Header.Get("Authorization") != "Bearer secret" {
-			http.Error(w, "unauthorized", http.StatusUnauthorized)
-			return
-		}
-		var request AcquireRequest
-		if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
-			t.Fatal(err)
-		}
-		if request.Category != "photo/a" || request.OriginalFilename != "upload.bin" {
-			t.Fatalf("request = %+v", request)
-		}
-		_ = json.NewEncoder(w).Encode(AcquireResponse{
-			Address: "https://storage.example", URL: "https://storage.example/photo/a/id.bin",
-			AddForm: map[string]string{"key": "photo/a/id.bin", "x-oss-security-token": "temporary"},
-		})
-	}))
-	defer server.Close()
-	client, err := New(server.URL, "secret", time.Second)
+func TestAcquireBuildsAliyunOSSPostObjectV4Policy(t *testing.T) {
+	client, err := New(Options{
+		Endpoint: "https://example-bucket.oss-cn-hangzhou.aliyuncs.com", Bucket: "example-bucket",
+		Region: "cn-hangzhou", AccessKeyID: "LTAIexample", AccessKeySecret: "secret",
+		PolicyTTL: 20 * time.Minute, MaxUploadBytes: 1024,
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	response, err := client.Acquire(context.Background(), AcquireRequest{Category: "photo/a", OriginalFilename: "upload.bin"})
+	client.now = func() time.Time { return time.Date(2026, 9, 3, 8, 30, 0, 0, time.UTC) }
+	client.randomKey = func() (string, error) { return "00112233445566778899aabbccddeeff", nil }
+	response, err := client.Acquire(context.Background(), AcquireRequest{
+		Category: "photo/a", OriginalFilename: "upload.bin", Extension: "bin", MaxBytes: 32,
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if response.AddForm["key"] != "photo/a/id.bin" {
+	wantKey := "photo/a/00112233445566778899aabbccddeeff.bin"
+	if response.Address != "https://example-bucket.oss-cn-hangzhou.aliyuncs.com" ||
+		response.URL != response.Address+"/"+wantKey || response.AddForm["key"] != wantKey {
 		t.Fatalf("response = %+v", response)
+	}
+	if response.AddForm["x-oss-signature-version"] != "OSS4-HMAC-SHA256" ||
+		response.AddForm["x-oss-credential"] != "LTAIexample/20260903/cn-hangzhou/oss/aliyun_v4_request" ||
+		response.AddForm["x-oss-security-token"] != "" {
+		t.Fatalf("form = %+v", response.AddForm)
+	}
+	wantSignature := signPolicy("secret", "20260903", "cn-hangzhou", response.AddForm["policy"])
+	if !hmac.Equal([]byte(response.AddForm["x-oss-signature"]), []byte(wantSignature)) {
+		t.Fatal("invalid V4 policy signature")
+	}
+	raw, err := base64.StdEncoding.DecodeString(response.AddForm["policy"])
+	if err != nil {
+		t.Fatal(err)
+	}
+	var policy map[string]any
+	if err := json.Unmarshal(raw, &policy); err != nil || policy["expiration"] != "2026-09-03T08:50:00.000Z" {
+		t.Fatalf("policy = %s, err = %v", raw, err)
+	}
+}
+
+func TestAcquireIncludesSTSSecurityToken(t *testing.T) {
+	client, err := New(Options{
+		Endpoint: "https://bucket.example", Region: "cn-hangzhou", AccessKeyID: "id",
+		AccessKeySecret: "secret", SecurityToken: "sts-token",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	response, err := client.Acquire(context.Background(), AcquireRequest{Category: "logs", ObjectName: "a.bin"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if response.AddForm["x-oss-security-token"] != "sts-token" {
+		t.Fatalf("form = %+v", response.AddForm)
 	}
 }

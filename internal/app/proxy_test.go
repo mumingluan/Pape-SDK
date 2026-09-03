@@ -69,14 +69,6 @@ func TestProxyRoutesPublicStorageHostToLocalStorage(t *testing.T) {
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("status=%d body=%s", recorder.Code, recorder.Body.String())
 	}
-
-	request = httptest.NewRequest(http.MethodPost, "https://storage-deepspace.papegames.com/admin/v1/upload-tokens", nil)
-	request.Host = "storage-deepspace.papegames.com"
-	recorder = httptest.NewRecorder()
-	p.serveInternal(recorder, request)
-	if recorder.Code != http.StatusNotFound {
-		t.Fatalf("public admin status = %d", recorder.Code)
-	}
 }
 
 func TestProxyDirectlyForwardsExplicitNonPapegamesStorageHost(t *testing.T) {
@@ -124,7 +116,7 @@ func TestNewProxyHandlerAllowsNonPapegamesStoragePublicHost(t *testing.T) {
 		t.Fatal(err)
 	}
 	cfg := &config.Config{BaseDir: temp, Storage: config.Storage{
-		BaseURL: "http://127.0.0.1:65287", PublicHost: "pape-storage.fatui.xyz",
+		ProxyBaseURL: "http://127.0.0.1:65287", PublicHost: "pape-storage.fatui.xyz",
 	}, Proxy: config.Proxy{Enabled: true, CACertificatePath: certPath, CAPrivateKeyPath: keyPath}}
 	handler, err := newProxyHandler(cfg, http.NotFoundHandler())
 	if err != nil {
@@ -142,6 +134,30 @@ func TestNewProxyHandlerAllowsNonPapegamesStoragePublicHost(t *testing.T) {
 	}
 	if p.storageTarget != nil {
 		t.Fatal("non-Papegames storage host was still configured for MITM forwarding")
+	}
+}
+
+func TestNewProxyHandlerAllowsRealOSSEndpointWithoutLocalTarget(t *testing.T) {
+	temp := t.TempDir()
+	_, caCertPEM, caKeyPEM := testCA(t)
+	certPath := filepath.Join(temp, "ca.pem")
+	keyPath := filepath.Join(temp, "ca.key")
+	if err := os.WriteFile(certPath, caCertPEM, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(keyPath, caKeyPEM, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	cfg := &config.Config{BaseDir: temp, Storage: config.Storage{
+		Endpoint: "https://example-bucket.oss-cn-hangzhou.aliyuncs.com",
+	}, Proxy: config.Proxy{Enabled: true, CACertificatePath: certPath, CAPrivateKeyPath: keyPath}}
+	handler, err := newProxyHandler(cfg, http.NotFoundHandler())
+	if err != nil {
+		t.Fatal(err)
+	}
+	p := handler.(*proxyServer)
+	if !p.allowsDirectHost("example-bucket.oss-cn-hangzhou.aliyuncs.com") || p.storageTarget != nil {
+		t.Fatalf("real OSS endpoint was not configured for direct forwarding: %+v", p)
 	}
 }
 

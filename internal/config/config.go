@@ -50,10 +50,17 @@ type Peer struct {
 }
 
 type Storage struct {
-	BaseURL        string `yaml:"base_url"`
-	PublicHost     string `yaml:"public_host"`
-	AdminToken     string `yaml:"admin_token"`
-	TimeoutSeconds int    `yaml:"timeout_seconds"`
+	Endpoint         string `yaml:"endpoint"`
+	PublicBaseURL    string `yaml:"public_base_url"`
+	Bucket           string `yaml:"bucket"`
+	Region           string `yaml:"region"`
+	AccessKeyID      string `yaml:"access_key_id"`
+	AccessKeySecret  string `yaml:"access_key_secret"`
+	SecurityToken    string `yaml:"security_token"`
+	PolicyTTLSeconds int    `yaml:"policy_ttl_seconds"`
+	MaxUploadBytes   int64  `yaml:"max_upload_bytes"`
+	ProxyBaseURL     string `yaml:"proxy_base_url"`
+	PublicHost       string `yaml:"public_host"`
 }
 
 type Proxy struct {
@@ -152,8 +159,11 @@ func Load(path string) (*Config, error) {
 			cfg.BOOIInner[serverID] = peer
 		}
 	}
-	if cfg.Storage.TimeoutSeconds == 0 {
-		cfg.Storage.TimeoutSeconds = 5
+	if cfg.Storage.PolicyTTLSeconds == 0 {
+		cfg.Storage.PolicyTTLSeconds = 20 * 60
+	}
+	if cfg.Storage.MaxUploadBytes == 0 {
+		cfg.Storage.MaxUploadBytes = 256 << 20
 	}
 	if cfg.Constants.ClientID == 0 {
 		cfg.Constants.ClientID = 1068
