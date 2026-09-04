@@ -26,6 +26,8 @@ func (a *App) innerRouter() *gin.Engine {
 	inner.GET("/admin/accounts/:id", a.getAdminAccount)
 	inner.PATCH("/admin/accounts/:id", a.updateAdminAccount)
 	inner.DELETE("/admin/accounts/:id", a.deleteAdminAccount)
+	inner.POST("/admin/accounts/:id/restore", a.restoreAdminAccount)
+	inner.DELETE("/admin/accounts/:id/hard", a.hardDeleteAdminAccount)
 	inner.PUT("/admin/accounts/:id/password", a.changeAdminPassword)
 	inner.POST("/admin/accounts/:id/logout-all", a.logoutAdminDevices)
 	return router

@@ -30,7 +30,21 @@ func TestAdminAccountCRUD(t *testing.T) {
 	if err := s.DeleteUser(user.ID); err != nil {
 		t.Fatal(err)
 	}
+	deleted, ok, err := s.AdminAccountByID(user.ID)
+	if err != nil || !ok || deleted.DeletedAt == 0 {
+		t.Fatalf("soft deleted account=%+v ok=%t err=%v", deleted, ok, err)
+	}
+	if err := s.RestoreUser(user.ID, "13700137000"); err != nil {
+		t.Fatal(err)
+	}
+	restored, ok, err := s.AdminAccountByID(user.ID)
+	if err != nil || !ok || restored.DeletedAt != 0 || restored.Phone != "13700137000" {
+		t.Fatalf("restored account=%+v ok=%t err=%v", restored, ok, err)
+	}
+	if err := s.HardDeleteUser(user.ID); err != nil {
+		t.Fatal(err)
+	}
 	if _, ok, err := s.AdminAccountByID(user.ID); err != nil || ok {
-		t.Fatalf("deleted account ok=%t err=%v", ok, err)
+		t.Fatalf("hard deleted account ok=%t err=%v", ok, err)
 	}
 }

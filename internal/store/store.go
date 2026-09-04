@@ -769,7 +769,7 @@ func (s *Store) DeleteUser(userID int64) error {
 	}
 	defer tx.Rollback()
 	if _, err := tx.Exec(`update users set phone = phone || '#deleted#' || ?, token = '', refresh_token = null,
-		token_revoked_at = ?, long_token = null, deleted_at = ? where id = ?`, now, now, now, userID); err != nil {
+		token_revoked_at = ?, long_token = null, deleted_at = ? where id = ? and deleted_at is null`, now, now, now, userID); err != nil {
 		return err
 	}
 	if _, err := tx.Exec("update auth_sessions set revoked_at = ? where user_id = ? and revoked_at is null", now, userID); err != nil {

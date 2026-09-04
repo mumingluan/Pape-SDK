@@ -102,7 +102,41 @@ func (a *App) deleteAdminAccount(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid account id"})
 		return
 	}
-	if err := a.store.DeleteUser(id); err != nil {
+	if err := a.unbindAndDeleteUser(c.Request.Context(), id, false); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.Status(http.StatusNoContent)
+}
+
+func (a *App) restoreAdminAccount(c *gin.Context) {
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil || id <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid account id"})
+		return
+	}
+	var input struct {
+		Phone string `json:"phone"`
+	}
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if err := a.store.RestoreUser(id, input.Phone); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	account, _, _ := a.store.AdminAccountByID(id)
+	c.JSON(http.StatusOK, account)
+}
+
+func (a *App) hardDeleteAdminAccount(c *gin.Context) {
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil || id <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid account id"})
+		return
+	}
+	if err := a.unbindAndDeleteUser(c.Request.Context(), id, true); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}

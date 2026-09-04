@@ -1403,7 +1403,7 @@ func (a *App) userCenterDeleteAccount(c *gin.Context) {
 		a.userCenterResult(c, err)
 		return
 	}
-	a.userCenterResult(c, a.store.DeleteUser(u.ID))
+	a.userCenterResult(c, a.unbindAndDeleteUser(c.Request.Context(), u.ID, false))
 }
 
 func (a *App) userCenterChangePhone(c *gin.Context) {
