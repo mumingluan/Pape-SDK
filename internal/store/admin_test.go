@@ -48,3 +48,44 @@ func TestAdminAccountCRUD(t *testing.T) {
 		t.Fatalf("hard deleted account ok=%t err=%v", ok, err)
 	}
 }
+
+func TestAccountSecurityStatus(t *testing.T) {
+	temp := t.TempDir()
+	s, err := Open("sqlite://"+filepath.Join(temp, "security.db"), temp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	user, err := s.CreateUser("13800138000")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if safe, err := s.UserSafeStatus(user.ID); err != nil || !safe {
+		t.Fatalf("new account safe=%t err=%v", safe, err)
+	}
+	if err := s.SetPasswordHash(user.ID, "first-hash"); err != nil {
+		t.Fatal(err)
+	}
+	if safe, err := s.UserSafeStatus(user.ID); err != nil || !safe {
+		t.Fatalf("first password safe=%t err=%v", safe, err)
+	}
+	if err := s.SetPasswordHash(user.ID, "changed-hash"); err != nil {
+		t.Fatal(err)
+	}
+	if safe, err := s.UserSafeStatus(user.ID); err != nil || safe {
+		t.Fatalf("changed password safe=%t err=%v", safe, err)
+	}
+	if err := s.SetSecurityOverride(user.ID, true); err != nil {
+		t.Fatal(err)
+	}
+	if safe, err := s.UserSafeStatus(user.ID); err != nil || !safe {
+		t.Fatalf("manual safe override=%t err=%v", safe, err)
+	}
+	if err := s.UpdatePhone(user.ID, "13900139000"); err != nil {
+		t.Fatal(err)
+	}
+	account, ok, err := s.AdminAccountByID(user.ID)
+	if err != nil || !ok || account.IsSafe || account.SecurityOverride != nil || account.SecurityChangedAt == 0 {
+		t.Fatalf("phone change account=%+v ok=%t err=%v", account, ok, err)
+	}
+}

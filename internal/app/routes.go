@@ -16,9 +16,14 @@ func (a *App) mountSDK(router *gin.Engine) {
 	a.mountPublicDocumentRoutes(router)
 	a.mountPassportRoutes(router)
 	a.mountAccessoryRoutes(router)
+	a.mountReportRoutes(router)
 	a.mountGameConfigRoutes(router)
 	a.mountSharedStubRoutes(router)
 	a.mountSDKOnlyStubRoutes(router)
+}
+
+func (a *App) mountReportRoutes(router *gin.Engine) {
+	router.POST("/v1/inform/add", a.addUserReport)
 }
 
 // mountUserCenterAPIs intentionally reuses the same Passport route groups as
@@ -58,6 +63,9 @@ func (a *App) mountAuthenticationRoutes(router *gin.Engine) {
 	router.Any("/v1/user/real/get", a.realGet)
 	router.Any("/v1/user/real/add", a.realAdd)
 	router.Any("/v1/user/login/check", a.loginCheck)
+	router.GET("/v1/user/checkrealinfo", a.checkRealInfo)
+	router.GET("/v1/user/getsafestatus", a.getSafeStatus)
+	router.GET("/v1/user/unfinishedorder", a.unfinishedOrder)
 	router.Any("/v1/user/youth/report/online", a.youthReport)
 	router.POST("/v1/user/oss/authorization", a.storageAuthorization)
 }
@@ -148,6 +156,8 @@ func (a *App) mountGameConfigRoutes(router *gin.Engine) {
 	router.GET("/v1/gameconfig/entries", a.entries)
 	router.GET("/v1/gameconfig/privacyagreement", a.privacyAgreement)
 	router.GET("/v1/gameconfig/patchlist", a.patchList)
+	router.GET("/v1/gameconfig/ratingguidenodelist", a.ratingGuideNodeList)
+	router.GET("/v1/ip/locate", a.ipLocate)
 	router.GET("/v1/conf/sdkclient", a.sdkClient)
 	router.POST("/v1/payment/init", a.paymentInit)
 	router.GET("/v1/gameconfig/parameter", a.parameter)

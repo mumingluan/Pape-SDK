@@ -38,6 +38,14 @@ func TestListenerRouteComposition(t *testing.T) {
 	if !sdkRoutes["/v1/gameconfig/serverlist"]["GET"] {
 		t.Fatal("SDK listener is missing gameconfig serverlist")
 	}
+	for _, path := range []string{"/v1/gameconfig/ratingguidenodelist", "/v1/ip/locate", "/v1/user/checkrealinfo", "/v1/user/getsafestatus", "/v1/user/unfinishedorder"} {
+		if !sdkRoutes[path]["GET"] {
+			t.Errorf("SDK listener is missing %s", path)
+		}
+	}
+	if !sdkRoutes["/v1/inform/add"]["POST"] {
+		t.Fatal("SDK listener is missing /v1/inform/add")
+	}
 	if _, exists := userCenterRoutes["/v1/gameconfig/serverlist"]; exists {
 		t.Fatal("user-center listener unexpectedly exposes SDK gameconfig routes")
 	}

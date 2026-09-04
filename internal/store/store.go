@@ -123,6 +123,8 @@ create table if not exists users (
 	token_revoked_at bigint,
 	long_token text,
 	password_hash text,
+	security_changed_at bigint not null default 0,
+	security_override int,
 	cancellation_status int not null default 1,
 	cancellation_at bigint,
 	deleted_at bigint,
@@ -178,6 +180,29 @@ create table if not exists request_log (
 	host varchar(255) not null,
 	path varchar(512) not null,
 	body_bytes bigint not null
+);
+create table if not exists user_reports (
+	id bigint primary key auto_increment,
+	request_id varchar(64) unique not null,
+	created_at bigint not null,
+	event_timestamp bigint not null,
+	host varchar(255) not null,
+	observed_ip varchar(64) not null,
+	client_ip varchar(64) not null,
+	client_id bigint not null,
+	zone_id bigint not null,
+	region bigint not null,
+	platform bigint not null,
+	source bigint not null,
+	submitter_role_id bigint not null,
+	submitter_role_name varchar(255) not null,
+	violation_role_id bigint not null,
+	violation_role_name varchar(255) not null,
+	reason_id bigint not null,
+	content text not null,
+	index idx_user_reports_created(created_at),
+	index idx_user_reports_submitter(submitter_role_id),
+	index idx_user_reports_violation(violation_role_id)
 );`)
 		if err != nil {
 			return err
@@ -186,6 +211,9 @@ create table if not exists request_log (
 			return err
 		}
 		if err := s.migrateUnifiedUserIDs(); err != nil {
+			return err
+		}
+		if err := s.ensureColumns(); err != nil {
 			return err
 		}
 		return s.migrateLegacyAuthSessions()
@@ -201,6 +229,8 @@ create table if not exists users (
 	token_revoked_at bigint,
 	long_token text,
 	password_hash text,
+	security_changed_at bigint not null default 0,
+	security_override int,
 	cancellation_status int not null default 1,
 	cancellation_at bigint,
 	deleted_at bigint,
@@ -256,14 +286,46 @@ create table if not exists request_log (
 	host varchar(255) not null,
 	path varchar(512) not null,
 	body_bytes bigint not null
+);
+create table if not exists user_reports (
+	id integer primary key autoincrement,
+	request_id varchar(64) unique not null,
+	created_at bigint not null,
+	event_timestamp bigint not null,
+	host varchar(255) not null,
+	observed_ip varchar(64) not null,
+	client_ip varchar(64) not null,
+	client_id bigint not null,
+	zone_id bigint not null,
+	region bigint not null,
+	platform bigint not null,
+	source bigint not null,
+	submitter_role_id bigint not null,
+	submitter_role_name varchar(255) not null,
+	violation_role_id bigint not null,
+	violation_role_name varchar(255) not null,
+	reason_id bigint not null,
+	content text not null
 );`)
 	if err != nil {
+		return err
+	}
+	if _, err := s.db.Exec("create index if not exists idx_user_reports_created on user_reports(created_at)"); err != nil {
+		return err
+	}
+	if _, err := s.db.Exec("create index if not exists idx_user_reports_submitter on user_reports(submitter_role_id)"); err != nil {
+		return err
+	}
+	if _, err := s.db.Exec("create index if not exists idx_user_reports_violation on user_reports(violation_role_id)"); err != nil {
 		return err
 	}
 	if err := s.ensureColumns(); err != nil {
 		return err
 	}
 	if err := s.migrateUnifiedUserIDs(); err != nil {
+		return err
+	}
+	if err := s.ensureColumns(); err != nil {
 		return err
 	}
 	return s.migrateLegacyAuthSessions()
@@ -280,6 +342,8 @@ func (s *Store) ensureColumns() error {
 		"token_expires_at":         "bigint not null default 0",
 		"refresh_token_expires_at": "bigint not null default 0",
 		"token_revoked_at":         "bigint",
+		"security_changed_at":      "bigint not null default 0",
+		"security_override":        "int",
 		"cancellation_status":      "int not null default 1",
 		"cancellation_at":          "bigint",
 		"deleted_at":               "bigint",
@@ -747,7 +811,11 @@ func (s *Store) UserByLongToken(token string) (User, bool, error) {
 }
 
 func (s *Store) SetPasswordHash(userID int64, hash string) error {
-	_, err := s.db.Exec("update users set password_hash = ? where id = ?", hash, userID)
+	now := time.Now().Unix()
+	_, err := s.db.Exec(`update users set
+		security_changed_at = case when coalesce(password_hash, '') = '' then security_changed_at else ? end,
+		security_override = case when coalesce(password_hash, '') = '' then security_override else null end,
+		password_hash = ? where id = ?`, now, hash, userID)
 	return err
 }
 
@@ -757,7 +825,11 @@ func (s *Store) UpdatePhone(userID int64, phone string) error {
 	if err != nil {
 		return err
 	}
-	_, err = s.db.Exec("update users set phone = ? where id = ?", phone, userID)
+	now := time.Now().Unix()
+	_, err = s.db.Exec(`update users set
+		security_changed_at = case when phone <> ? then ? else security_changed_at end,
+		security_override = case when phone <> ? then null else security_override end,
+		phone = ? where id = ?`, phone, now, phone, phone, userID)
 	return err
 }
 

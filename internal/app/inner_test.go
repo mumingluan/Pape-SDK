@@ -53,6 +53,33 @@ func TestSDKInnerValidatesMatchingOpenIDAndToken(t *testing.T) {
 	}
 }
 
+func TestSDKInnerVerifiesConfiguredRealName(t *testing.T) {
+	app := &App{cfg: &config.Config{
+		Inner:            config.InnerService{AuthToken: "secret"},
+		RealNameIdentity: config.RealNameIdentity{RealName: "测试实名", RealID: "110101199001010010"},
+	}}
+	router := app.innerRouter()
+	for _, test := range []struct {
+		name   string
+		body   string
+		status int
+	}{
+		{name: "match", body: `{"real_id":"110101199001010010","real_name":"测试实名"}`, status: http.StatusOK},
+		{name: "mismatch", body: `{"real_id":"110101199001010011","real_name":"测试实名"}`, status: http.StatusUnauthorized},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			request := httptest.NewRequest(http.MethodPost, "/inner/v1/accounts/verify-real-name", strings.NewReader(test.body))
+			request.Header.Set("Content-Type", "application/json")
+			request.Header.Set("Authorization", "Bearer secret")
+			recorder := httptest.NewRecorder()
+			router.ServeHTTP(recorder, request)
+			if recorder.Code != test.status {
+				t.Fatalf("status=%d body=%s", recorder.Code, recorder.Body.String())
+			}
+		})
+	}
+}
+
 func TestSDKPublicRouterDoesNotMountNuanLogin(t *testing.T) {
 	app := &App{cfg: &config.Config{}, store: nil}
 	recorder := httptest.NewRecorder()

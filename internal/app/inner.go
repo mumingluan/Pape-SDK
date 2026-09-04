@@ -21,6 +21,8 @@ func (a *App) innerRouter() *gin.Engine {
 	})
 	inner := router.Group("/inner/v1", a.innerAuth())
 	inner.POST("/accounts/verify-login", a.verifyInnerLogin)
+	inner.POST("/accounts/verify-real-name", a.verifyInnerRealName)
+	inner.GET("/admin/reports", a.listAdminReports)
 	inner.GET("/admin/accounts", a.listAdminAccounts)
 	inner.POST("/admin/accounts", a.createAdminAccount)
 	inner.GET("/admin/accounts/:id", a.getAdminAccount)
@@ -31,6 +33,29 @@ func (a *App) innerRouter() *gin.Engine {
 	inner.PUT("/admin/accounts/:id/password", a.changeAdminPassword)
 	inner.POST("/admin/accounts/:id/logout-all", a.logoutAdminDevices)
 	return router
+}
+
+func (a *App) verifyInnerRealName(c *gin.Context) {
+	var request struct {
+		RealID   string `json:"real_id"`
+		RealName string `json:"real_name"`
+	}
+	if err := c.ShouldBindJSON(&request); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"valid": false, "error": err.Error()})
+		return
+	}
+	valid := subtle.ConstantTimeCompare(
+		[]byte(strings.TrimSpace(request.RealID)),
+		[]byte(strings.TrimSpace(a.cfg.RealNameIdentity.RealID)),
+	) == 1 && subtle.ConstantTimeCompare(
+		[]byte(strings.TrimSpace(request.RealName)),
+		[]byte(strings.TrimSpace(a.cfg.RealNameIdentity.RealName)),
+	) == 1
+	if !valid {
+		c.JSON(http.StatusUnauthorized, gin.H{"valid": false, "error": "实名信息错误"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"valid": true})
 }
 
 func (a *App) innerAuth() gin.HandlerFunc {

@@ -7,6 +7,17 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+func (a *App) listAdminReports(c *gin.Context) {
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "100"))
+	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
+	reports, total, err := a.store.AdminUserReports(c.Query("q"), limit, offset)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"reports": reports, "total": total, "limit": limit, "offset": offset})
+}
+
 func (a *App) listAdminAccounts(c *gin.Context) {
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "50"))
 	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
@@ -76,7 +87,8 @@ func (a *App) updateAdminAccount(c *gin.Context) {
 		return
 	}
 	var input struct {
-		Phone *string `json:"phone"`
+		Phone  *string `json:"phone"`
+		IsSafe *bool   `json:"is_safe"`
 	}
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -84,6 +96,12 @@ func (a *App) updateAdminAccount(c *gin.Context) {
 	}
 	if input.Phone != nil {
 		if err := a.store.AdminUpdateAccount(id, *input.Phone); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+	}
+	if input.IsSafe != nil {
+		if err := a.store.SetSecurityOverride(id, *input.IsSafe); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
