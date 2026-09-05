@@ -1,0 +1,15 @@
+{
+  "code": 0,
+  "info": "OK",
+  "request_id": "07d0e90b-3c27-4f5e-b223-a71ceaa37b45",
+  "data": {
+    "deliver_retry_round_times": 20,
+    "deliver_retry_count": 5,
+    "payloadingtime": 60,
+    "pay_env": "release",
+    "guest_recharge": 1,
+    "currency": [],
+    "ccr": false,
+    "charge_version": {}
+  }
+}

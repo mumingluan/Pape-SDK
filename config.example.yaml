@@ -60,11 +60,7 @@ authentication:
   allow_register: true      # false 时未知手机号取码仍返回成功，但不发送、不签发验证码，也不能创建账号
   sms_only_register: false  # true 时短信仅用于新号注册；无密码旧号仅可通过忘记密码首次设密
 
-sdk_constants:
-  client_id: 1068
-  app_id: "kmT84W9D"
-  app_key: "Efytc7XAliCx1P4Z"
-  aes_key: "fVFLsy60quh79M2b"
+default_application: "kmT84W9D"
 
 user_center_constants:
   client_id: 1003
@@ -93,3 +89,38 @@ sms:
     region_id: "cn-hangzhou"
     sign_name: "叠纸游戏"
     template_code: "XXXXXXXXXXXXXXXXXXX"
+
+# Passport applications, selected by app_id or login clientid.
+# Resource requests use game_client_id together with channel/region.
+applications:
+  kmT84W9D:
+    client_id: 1068
+    app_key: "REPLACE_WITH_BFF_APP_KEY"
+    aes_key: "REPLACE_WITH_BFF_AES_KEY"
+    game_client_id: "1068"
+    region: "1"
+    channel: "2"
+    config_dir: "./config/apps/kmT84W9D"
+    api: "api-deepspace.papegames.com:12101"
+  EXAMPLE_APP_ID:
+    client_id: 1070
+    app_key: "REPLACE_WITH_BFF_APP_KEY"
+    aes_key: "REPLACE_WITH_BFF_AES_KEY"
+    game_client_id: "1067"
+    region: "83"
+    channel: "76"
+    config_dir: "./config/apps/EXAMPLE_APP_ID"
+    api: "api.infoldgames.com:443"
+
+# smtp delivers verification emails over TLS; outbox writes local JSON for development.
+email:
+  mode: "smtp"
+  host: "smtp.example.com"
+  port: 587
+  username: ""
+  password: ""
+  from: "accounts@example.com"
+  outbox_dir: "./data/email-outbox"
+
+game_config_dirs:
+  "1067": "./config/game-clients/1067"

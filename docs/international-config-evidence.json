@@ -1,0 +1,1077 @@
+[
+  {
+    "source": "os-init.har",
+    "entry": 4,
+    "host": "api.infoldgames.com",
+    "path": "/v1/gameconfig/privacyagreement",
+    "method": "GET",
+    "selectors": {
+      "clientid": "1067",
+      "areaid": "5",
+      "all": "0"
+    },
+    "sha256": "e04636883b75cce31425d02f3adcd98b5945f3b22d0abbc060d539eaf7a20050"
+  },
+  {
+    "source": "os-init.har",
+    "entry": 6,
+    "host": "api.infoldgames.com",
+    "path": "/v1/gameconfig/entries",
+    "method": "GET",
+    "selectors": {
+      "onlyEffect": "true",
+      "clientid": "1067",
+      "zoneid": "0",
+      "codes": "%5B%22CMP_Popup%22%5D",
+      "platid": "0"
+    },
+    "sha256": "d0dbd9efdff43256671651e90e23bd14bbe6311a53510f076777a800544a38d9"
+  },
+  {
+    "source": "os-init.har",
+    "entry": 10,
+    "host": "api.infoldgames.com",
+    "path": "/v1/gameconfig/parameter",
+    "method": "GET",
+    "selectors": {
+      "clientid": "1067",
+      "key": "ResUpdate_CheckResIntegrity"
+    },
+    "sha256": "fc2a015a88fbfa43d3d6d461dcd7667c127355a15e2039999636f37361da4625"
+  },
+  {
+    "source": "os-init.har",
+    "entry": 15,
+    "host": "api.infoldgames.com",
+    "path": "/v1/gameconfig/parameter",
+    "method": "GET",
+    "selectors": {
+      "clientid": "1067",
+      "key": "PreDownload_Switch"
+    },
+    "sha256": "bf9a9d69cfc86e517bc8980ccc85a5e5a4f229ffd5f3d26778ac442ad1c7c425"
+  },
+  {
+    "source": "os-init.har",
+    "entry": 24,
+    "host": "api.infoldgames.com",
+    "path": "/v1/gameconfig/patchlist",
+    "method": "GET",
+    "selectors": {
+      "channel": "80",
+      "region": "81",
+      "clientid": "1067"
+    },
+    "sha256": "920547651e2bc2e0dd8009d2846dc459d8452f04ab3d33b1d7263c512bad8893"
+  },
+  {
+    "source": "os-init.har",
+    "entry": 29,
+    "host": null,
+    "path": "/v1/conf/sdkclient",
+    "method": "GET",
+    "selectors": {
+      "clientid": "1072",
+      "sdkversion": "2.1.7.20",
+      "sdk_channel": "80",
+      "lang": "ko"
+    },
+    "sha256": "6ef85ccae40d3d14fdf83d965fc959a436b47644f4cb41aa0c00eb2c9057b1ea"
+  },
+  {
+    "source": "os-init.har",
+    "entry": 30,
+    "host": "passport.infoldgames.com",
+    "path": "/v1/payment/init",
+    "method": "POST",
+    "selectors": {
+      "app_id": "Ivfk6q0x",
+      "client_id": "1072",
+      "clientid": "1072",
+      "lang": "ko",
+      "region": "80",
+      "sdk_channel": "80"
+    },
+    "sha256": "3d7fab6556720e154fafa6adc38710a596487f2c345c2ac7a3703898186c55f3"
+  },
+  {
+    "source": "os-init.har",
+    "entry": 31,
+    "host": "passport.infoldgames.com",
+    "path": "/v1/accessories/init",
+    "method": "POST",
+    "selectors": {
+      "app_id": "Ivfk6q0x",
+      "client_id": "1072",
+      "clientid": "1072",
+      "lang": "ko",
+      "region": "80",
+      "sdk_channel": "80"
+    },
+    "sha256": "ea30481bbd982739d1b81ee525addf2990a66a13a5d39efb6d83e9080e2b3cfa"
+  },
+  {
+    "source": "os-init.har",
+    "entry": 33,
+    "host": "api.infoldgames.com",
+    "path": "/v1/gameconfig/privacyagreement",
+    "method": "GET",
+    "selectors": {
+      "clientid": "1067",
+      "areaid": "5",
+      "all": "0"
+    },
+    "sha256": "e04636883b75cce31425d02f3adcd98b5945f3b22d0abbc060d539eaf7a20050"
+  },
+  {
+    "source": "os-init.har",
+    "entry": 34,
+    "host": "api.infoldgames.com",
+    "path": "/v1/gameconfig/privacyagreement",
+    "method": "GET",
+    "selectors": {
+      "clientid": "1067",
+      "areaid": "5",
+      "all": "0"
+    },
+    "sha256": "e04636883b75cce31425d02f3adcd98b5945f3b22d0abbc060d539eaf7a20050"
+  },
+  {
+    "source": "os-init.har",
+    "entry": 35,
+    "host": "api.infoldgames.com",
+    "path": "/v1/gameconfig/entries",
+    "method": "GET",
+    "selectors": {
+      "onlyEffect": "true",
+      "clientid": "1067",
+      "zoneid": "0",
+      "codes": "%5B%22CMP_Popup%22%5D",
+      "platid": "0"
+    },
+    "sha256": "d0dbd9efdff43256671651e90e23bd14bbe6311a53510f076777a800544a38d9"
+  },
+  {
+    "source": "os-init.har",
+    "entry": 36,
+    "host": "api.infoldgames.com",
+    "path": "/v1/gameconfig/entries",
+    "method": "GET",
+    "selectors": {
+      "onlyEffect": "true",
+      "clientid": "1067",
+      "zoneid": "0",
+      "codes": "%5B%22CMP_Popup%22%5D",
+      "platid": "0"
+    },
+    "sha256": "d0dbd9efdff43256671651e90e23bd14bbe6311a53510f076777a800544a38d9"
+  },
+  {
+    "source": "os-init.har",
+    "entry": 54,
+    "host": "api.infoldgames.com",
+    "path": "/v1/gameconfig/privacyagreement",
+    "method": "GET",
+    "selectors": {
+      "areaid": "3",
+      "clientid": "1067",
+      "all": "0"
+    },
+    "sha256": "d3f015d4edbca60228e5c753a33ca332cd1bb3cb11cedcfb75b7765608f5122c"
+  },
+  {
+    "source": "os-init.har",
+    "entry": 55,
+    "host": "api.infoldgames.com",
+    "path": "/v1/gameconfig/entries",
+    "method": "GET",
+    "selectors": {
+      "platid": "0",
+      "codes": "%5B%22CMP_Popup%22%5D",
+      "clientid": "1067",
+      "onlyEffect": "true",
+      "zoneid": "0"
+    },
+    "sha256": "d0dbd9efdff43256671651e90e23bd14bbe6311a53510f076777a800544a38d9"
+  },
+  {
+    "source": "os-init.har",
+    "entry": 60,
+    "host": "api.infoldgames.com",
+    "path": "/v1/gameconfig/parameter",
+    "method": "GET",
+    "selectors": {
+      "key": "ResUpdate_CheckResIntegrity",
+      "clientid": "1067"
+    },
+    "sha256": "fc2a015a88fbfa43d3d6d461dcd7667c127355a15e2039999636f37361da4625"
+  },
+  {
+    "source": "os-init.har",
+    "entry": 68,
+    "host": "api.infoldgames.com",
+    "path": "/v1/gameconfig/parameter",
+    "method": "GET",
+    "selectors": {
+      "key": "PreDownload_Switch",
+      "clientid": "1067"
+    },
+    "sha256": "bf9a9d69cfc86e517bc8980ccc85a5e5a4f229ffd5f3d26778ac442ad1c7c425"
+  },
+  {
+    "source": "os-init.har",
+    "entry": 79,
+    "host": "api.infoldgames.com",
+    "path": "/v1/gameconfig/patchlist",
+    "method": "GET",
+    "selectors": {
+      "region": "83",
+      "channel": "76",
+      "clientid": "1067"
+    },
+    "sha256": "3ffcaae1f1e9759786383550cc55e3b9793b9122b9dee865d3687ce0dff0f369"
+  },
+  {
+    "source": "os-init.har",
+    "entry": 83,
+    "host": "passport.infoldgames.com",
+    "path": "/v1/accessories/init",
+    "method": "POST",
+    "selectors": {
+      "app_id": "DsEb1STz",
+      "client_id": "1070",
+      "clientid": "1070",
+      "lang": "en",
+      "region": "76",
+      "sdk_channel": "76"
+    },
+    "sha256": "2363c72fe0eb0a428dd7d0bd9e06d175a05119664c0f61c47ea6094d968d658f"
+  },
+  {
+    "source": "os-init.har",
+    "entry": 86,
+    "host": "passport.infoldgames.com",
+    "path": "/v1/payment/init",
+    "method": "POST",
+    "selectors": {
+      "app_id": "DsEb1STz",
+      "client_id": "1070",
+      "clientid": "1070",
+      "lang": "en",
+      "region": "76",
+      "sdk_channel": "76"
+    },
+    "sha256": "3d7fab6556720e154fafa6adc38710a596487f2c345c2ac7a3703898186c55f3"
+  },
+  {
+    "source": "os-init.har",
+    "entry": 88,
+    "host": null,
+    "path": "/v1/conf/sdkclient",
+    "method": "GET",
+    "selectors": {
+      "clientid": "1070",
+      "sdkversion": "2.1.7.20",
+      "sdk_channel": "76",
+      "lang": "en"
+    },
+    "sha256": "a275811ffae384240b68dabcb81e5a6bd003c4e91bdcf9c4ab82db7d789a68c9"
+  },
+  {
+    "source": "os-init.har",
+    "entry": 89,
+    "host": "api.infoldgames.com",
+    "path": "/v1/gameconfig/privacyagreement",
+    "method": "GET",
+    "selectors": {
+      "areaid": "3",
+      "clientid": "1067",
+      "all": "0"
+    },
+    "sha256": "d3f015d4edbca60228e5c753a33ca332cd1bb3cb11cedcfb75b7765608f5122c"
+  },
+  {
+    "source": "os-init.har",
+    "entry": 90,
+    "host": "api.infoldgames.com",
+    "path": "/v1/gameconfig/privacyagreement",
+    "method": "GET",
+    "selectors": {
+      "areaid": "3",
+      "clientid": "1067",
+      "all": "0"
+    },
+    "sha256": "d3f015d4edbca60228e5c753a33ca332cd1bb3cb11cedcfb75b7765608f5122c"
+  },
+  {
+    "source": "os-init.har",
+    "entry": 91,
+    "host": "api.infoldgames.com",
+    "path": "/v1/gameconfig/entries",
+    "method": "GET",
+    "selectors": {
+      "platid": "0",
+      "codes": "%5B%22CMP_Popup%22%5D",
+      "clientid": "1067",
+      "onlyEffect": "true",
+      "zoneid": "0"
+    },
+    "sha256": "d0dbd9efdff43256671651e90e23bd14bbe6311a53510f076777a800544a38d9"
+  },
+  {
+    "source": "os-init.har",
+    "entry": 92,
+    "host": "api.infoldgames.com",
+    "path": "/v1/gameconfig/entries",
+    "method": "GET",
+    "selectors": {
+      "platid": "0",
+      "codes": "%5B%22CMP_Popup%22%5D",
+      "clientid": "1067",
+      "onlyEffect": "true",
+      "zoneid": "0"
+    },
+    "sha256": "d0dbd9efdff43256671651e90e23bd14bbe6311a53510f076777a800544a38d9"
+  },
+  {
+    "source": "os-init.har",
+    "entry": 93,
+    "host": null,
+    "path": "/v1/gameconfig/entries",
+    "method": "POST",
+    "selectors": {
+      "sdkversion": "2.1.7.20",
+      "sdk_channel": "76",
+      "lang": "en",
+      "clientid": "1067",
+      "codes": "[\"America_Age_Policy_Parameter\"]"
+    },
+    "sha256": "ddc571079ce55ae056f7f073e86e6ecdb1a3fc95f634adac8d851a029028f9b5"
+  },
+  {
+    "source": "os-init.har",
+    "entry": 94,
+    "host": "api.infoldgames.com",
+    "path": "/v1/gameconfig/parameter",
+    "method": "GET",
+    "selectors": {
+      "key": "AgeCheck_OverTime",
+      "clientid": "1067"
+    },
+    "sha256": "0c372bf6d238db4480ef4ef19f4ab0f146f1ce4e9460eadf240a4d7ed1fdc552"
+  },
+  {
+    "source": "os-init.har",
+    "entry": 116,
+    "host": "api.infoldgames.com",
+    "path": "/v1/gameconfig/privacyagreement",
+    "method": "GET",
+    "selectors": {
+      "areaid": "4",
+      "clientid": "1067",
+      "all": "0"
+    },
+    "sha256": "68d5ed53e0c3e43882512c83f5c99ffe0323978020fd94107eea9e0f6713e611"
+  },
+  {
+    "source": "os-init.har",
+    "entry": 117,
+    "host": "api.infoldgames.com",
+    "path": "/v1/gameconfig/entries",
+    "method": "GET",
+    "selectors": {
+      "codes": "%5B%22CMP_Popup%22%5D",
+      "zoneid": "0",
+      "clientid": "1067",
+      "onlyEffect": "true",
+      "platid": "0"
+    },
+    "sha256": "d0dbd9efdff43256671651e90e23bd14bbe6311a53510f076777a800544a38d9"
+  },
+  {
+    "source": "os-init.har",
+    "entry": 118,
+    "host": "api.infoldgames.com",
+    "path": "/v1/gameconfig/parameter",
+    "method": "GET",
+    "selectors": {
+      "key": "ResUpdate_CheckResIntegrity",
+      "clientid": "1067"
+    },
+    "sha256": "fc2a015a88fbfa43d3d6d461dcd7667c127355a15e2039999636f37361da4625"
+  },
+  {
+    "source": "os-init.har",
+    "entry": 119,
+    "host": "api.infoldgames.com",
+    "path": "/v1/gameconfig/parameter",
+    "method": "GET",
+    "selectors": {
+      "key": "PreDownload_Switch",
+      "clientid": "1067"
+    },
+    "sha256": "bf9a9d69cfc86e517bc8980ccc85a5e5a4f229ffd5f3d26778ac442ad1c7c425"
+  },
+  {
+    "source": "os-init.har",
+    "entry": 123,
+    "host": "api.infoldgames.com",
+    "path": "/v1/gameconfig/patchlist",
+    "method": "GET",
+    "selectors": {
+      "region": "81",
+      "clientid": "1067",
+      "channel": "79"
+    },
+    "sha256": "5bd2c2aac25f6761637a37a6f02b3dba60126116fd43cac0d501349bcab23fac"
+  },
+  {
+    "source": "os-init.har",
+    "entry": 127,
+    "host": "api.infoldgames.com",
+    "path": "/v1/gameconfig/privacyagreement",
+    "method": "GET",
+    "selectors": {
+      "areaid": "4",
+      "clientid": "1067",
+      "all": "0"
+    },
+    "sha256": "68d5ed53e0c3e43882512c83f5c99ffe0323978020fd94107eea9e0f6713e611"
+  },
+  {
+    "source": "os-init.har",
+    "entry": 138,
+    "host": "api.infoldgames.com",
+    "path": "/v1/gameconfig/entries",
+    "method": "GET",
+    "selectors": {
+      "codes": "%5B%22CMP_Popup%22%5D",
+      "zoneid": "0",
+      "clientid": "1067",
+      "onlyEffect": "true",
+      "platid": "0"
+    },
+    "sha256": "d0dbd9efdff43256671651e90e23bd14bbe6311a53510f076777a800544a38d9"
+  },
+  {
+    "source": "os-init.har",
+    "entry": 141,
+    "host": "api.infoldgames.com",
+    "path": "/v1/gameconfig/patchlist",
+    "method": "GET",
+    "selectors": {
+      "region": "81",
+      "clientid": "1067",
+      "channel": "79"
+    },
+    "sha256": "5bd2c2aac25f6761637a37a6f02b3dba60126116fd43cac0d501349bcab23fac"
+  },
+  {
+    "source": "os-init.har",
+    "entry": 144,
+    "host": "passport.infoldgames.com",
+    "path": "/v1/payment/init",
+    "method": "POST",
+    "selectors": {
+      "app_id": "QEiTBAMf",
+      "client_id": "1071",
+      "clientid": "1071",
+      "lang": "jp",
+      "region": "79",
+      "sdk_channel": "79"
+    },
+    "sha256": "3d7fab6556720e154fafa6adc38710a596487f2c345c2ac7a3703898186c55f3"
+  },
+  {
+    "source": "os-init.har",
+    "entry": 145,
+    "host": "passport.infoldgames.com",
+    "path": "/v1/accessories/init",
+    "method": "POST",
+    "selectors": {
+      "app_id": "QEiTBAMf",
+      "client_id": "1071",
+      "clientid": "1071",
+      "lang": "jp",
+      "region": "79",
+      "sdk_channel": "79"
+    },
+    "sha256": "718b94389532473a229e913f418f66ca0aedd2f16d3aa0b4d4ee145aecb82113"
+  },
+  {
+    "source": "os-init.har",
+    "entry": 148,
+    "host": null,
+    "path": "/v1/conf/sdkclient",
+    "method": "GET",
+    "selectors": {
+      "clientid": "1071",
+      "sdkversion": "2.1.7.20",
+      "sdk_channel": "79",
+      "lang": "jp"
+    },
+    "sha256": "af049a2daf05962ecbbc526aa4f2274cbab1f00520d7af555548c55359b7b024"
+  },
+  {
+    "source": "os-init.har",
+    "entry": 149,
+    "host": "api.infoldgames.com",
+    "path": "/v1/gameconfig/privacyagreement",
+    "method": "GET",
+    "selectors": {
+      "areaid": "4",
+      "clientid": "1067",
+      "all": "0"
+    },
+    "sha256": "68d5ed53e0c3e43882512c83f5c99ffe0323978020fd94107eea9e0f6713e611"
+  },
+  {
+    "source": "os-init.har",
+    "entry": 150,
+    "host": "api.infoldgames.com",
+    "path": "/v1/gameconfig/entries",
+    "method": "GET",
+    "selectors": {
+      "codes": "%5B%22CMP_Popup%22%5D",
+      "zoneid": "0",
+      "clientid": "1067",
+      "onlyEffect": "true",
+      "platid": "0"
+    },
+    "sha256": "d0dbd9efdff43256671651e90e23bd14bbe6311a53510f076777a800544a38d9"
+  },
+  {
+    "source": "os-init.har",
+    "entry": 167,
+    "host": "api.infoldgames.com",
+    "path": "/v1/gameconfig/privacyagreement",
+    "method": "GET",
+    "selectors": {
+      "all": "0",
+      "clientid": "1067",
+      "areaid": "2"
+    },
+    "sha256": "a7e7fbf32375b77beb90a196e3ae5950d3a1af9b5209c742d26a65a5c44d25a3"
+  },
+  {
+    "source": "os-init.har",
+    "entry": 168,
+    "host": "api.infoldgames.com",
+    "path": "/v1/gameconfig/entries",
+    "method": "GET",
+    "selectors": {
+      "platid": "0",
+      "onlyEffect": "true",
+      "codes": "%5B%22CMP_Popup%22%5D",
+      "zoneid": "0",
+      "clientid": "1067"
+    },
+    "sha256": "d0dbd9efdff43256671651e90e23bd14bbe6311a53510f076777a800544a38d9"
+  },
+  {
+    "source": "os-init.har",
+    "entry": 169,
+    "host": "api.infoldgames.com",
+    "path": "/v1/gameconfig/parameter",
+    "method": "GET",
+    "selectors": {
+      "key": "ResUpdate_CheckResIntegrity",
+      "clientid": "1067"
+    },
+    "sha256": "fc2a015a88fbfa43d3d6d461dcd7667c127355a15e2039999636f37361da4625"
+  },
+  {
+    "source": "os-init.har",
+    "entry": 172,
+    "host": "api.infoldgames.com",
+    "path": "/v1/gameconfig/parameter",
+    "method": "GET",
+    "selectors": {
+      "key": "PreDownload_Switch",
+      "clientid": "1067"
+    },
+    "sha256": "bf9a9d69cfc86e517bc8980ccc85a5e5a4f229ffd5f3d26778ac442ad1c7c425"
+  },
+  {
+    "source": "os-init.har",
+    "entry": 175,
+    "host": "api.infoldgames.com",
+    "path": "/v1/gameconfig/patchlist",
+    "method": "GET",
+    "selectors": {
+      "channel": "81",
+      "clientid": "1067",
+      "region": "85"
+    },
+    "sha256": "f542ce1f1cc3a65442f4c68b9f3d4a3c140cd1aee209b0b63c94cea4ca45115e"
+  },
+  {
+    "source": "os-init.har",
+    "entry": 179,
+    "host": "api.infoldgames.com",
+    "path": "/v1/gameconfig/privacyagreement",
+    "method": "GET",
+    "selectors": {
+      "all": "0",
+      "clientid": "1067",
+      "areaid": "2"
+    },
+    "sha256": "a7e7fbf32375b77beb90a196e3ae5950d3a1af9b5209c742d26a65a5c44d25a3"
+  },
+  {
+    "source": "os-init.har",
+    "entry": 191,
+    "host": "api.infoldgames.com",
+    "path": "/v1/gameconfig/entries",
+    "method": "GET",
+    "selectors": {
+      "platid": "0",
+      "onlyEffect": "true",
+      "codes": "%5B%22CMP_Popup%22%5D",
+      "zoneid": "0",
+      "clientid": "1067"
+    },
+    "sha256": "d0dbd9efdff43256671651e90e23bd14bbe6311a53510f076777a800544a38d9"
+  },
+  {
+    "source": "os-init.har",
+    "entry": 195,
+    "host": "api.infoldgames.com",
+    "path": "/v1/gameconfig/patchlist",
+    "method": "GET",
+    "selectors": {
+      "channel": "81",
+      "clientid": "1067",
+      "region": "85"
+    },
+    "sha256": "f542ce1f1cc3a65442f4c68b9f3d4a3c140cd1aee209b0b63c94cea4ca45115e"
+  },
+  {
+    "source": "os-init.har",
+    "entry": 199,
+    "host": "passport.infoldgames.com",
+    "path": "/v1/accessories/init",
+    "method": "POST",
+    "selectors": {
+      "app_id": "vIin01GU",
+      "client_id": "1073",
+      "clientid": "1073",
+      "lang": "zh-CHT",
+      "region": "81",
+      "sdk_channel": "81"
+    },
+    "sha256": "e74926075cb593f9d3e118fcde4a17ed25d89da7e7693f794125ccb62419f795"
+  },
+  {
+    "source": "os-init.har",
+    "entry": 201,
+    "host": "passport.infoldgames.com",
+    "path": "/v1/payment/init",
+    "method": "POST",
+    "selectors": {
+      "app_id": "vIin01GU",
+      "client_id": "1073",
+      "clientid": "1073",
+      "lang": "zh-CHT",
+      "region": "81",
+      "sdk_channel": "81"
+    },
+    "sha256": "3d7fab6556720e154fafa6adc38710a596487f2c345c2ac7a3703898186c55f3"
+  },
+  {
+    "source": "os-init.har",
+    "entry": 202,
+    "host": null,
+    "path": "/v1/conf/sdkclient",
+    "method": "GET",
+    "selectors": {
+      "clientid": "1073",
+      "sdkversion": "2.1.7.20",
+      "sdk_channel": "81",
+      "lang": "zh-CHT"
+    },
+    "sha256": "d1f161224274d74fcbd404d732f6255ba480cdb47478d02e9af09c3760af3e9b"
+  },
+  {
+    "source": "os-init.har",
+    "entry": 203,
+    "host": "api.infoldgames.com",
+    "path": "/v1/gameconfig/privacyagreement",
+    "method": "GET",
+    "selectors": {
+      "all": "0",
+      "clientid": "1067",
+      "areaid": "2"
+    },
+    "sha256": "a7e7fbf32375b77beb90a196e3ae5950d3a1af9b5209c742d26a65a5c44d25a3"
+  },
+  {
+    "source": "os-init.har",
+    "entry": 204,
+    "host": "api.infoldgames.com",
+    "path": "/v1/gameconfig/entries",
+    "method": "GET",
+    "selectors": {
+      "platid": "0",
+      "onlyEffect": "true",
+      "codes": "%5B%22CMP_Popup%22%5D",
+      "zoneid": "0",
+      "clientid": "1067"
+    },
+    "sha256": "d0dbd9efdff43256671651e90e23bd14bbe6311a53510f076777a800544a38d9"
+  },
+  {
+    "source": "os-login.har",
+    "entry": 25,
+    "host": "api.infoldgames.com",
+    "path": "/v1/gameconfig/entries",
+    "method": "GET",
+    "selectors": {
+      "codes": "%5B%22Announce_Tab%22%5D",
+      "clientid": "1067",
+      "zoneid": "0",
+      "platid": "76",
+      "onlyEffect": "true"
+    },
+    "sha256": "bffd19123fa826f27d169c898b4ecb48bc307eb598cd78a110e82a9aa2adf5a7"
+  },
+  {
+    "source": "os-login.har",
+    "entry": 99,
+    "host": "api.infoldgames.com",
+    "path": "/v1/gameconfig/parameter",
+    "method": "GET",
+    "selectors": {
+      "key": "ResUpdate_CheckBPackage_Data",
+      "clientid": "1067"
+    },
+    "sha256": "55bec8af137524afd0dbc10984ea7d0145c0a4d9a64da555c0d87105e86ffca3"
+  },
+  {
+    "source": "os-login.har",
+    "entry": 100,
+    "host": "api.infoldgames.com",
+    "path": "/v1/gameconfig/parameter",
+    "method": "GET",
+    "selectors": {
+      "key": "DELETABLE_SUBPACKAGE_ID",
+      "clientid": "1067"
+    },
+    "sha256": "7f83426c3dd740bb862331e4fe934971a2d25d196bc3aa487ab7377c65eea6f8"
+  },
+  {
+    "source": "os-login.har",
+    "entry": 102,
+    "host": "api.infoldgames.com",
+    "path": "/v1/gameconfig/parameter",
+    "method": "GET",
+    "selectors": {
+      "key": "ResUpdate_ReStartGame",
+      "clientid": "1067"
+    },
+    "sha256": "9523c74b80135691e3b627c8c1f79e81be2427147d422886b2f93d4cede73cd4"
+  },
+  {
+    "source": "os-login.har",
+    "entry": 103,
+    "host": "api.infoldgames.com",
+    "path": "/v1/gameconfig/parameter",
+    "method": "GET",
+    "selectors": {
+      "key": "SUBPACKAGE_ID",
+      "clientid": "1067"
+    },
+    "sha256": "4f19ad0f584eede5a1252a707401551740539409f4addd4f337a0948513bcd9c"
+  },
+  {
+    "source": "os-login.har",
+    "entry": 137,
+    "host": "api.infoldgames.com",
+    "path": "/v1/gameconfig/privacyagreement",
+    "method": "GET",
+    "selectors": {
+      "clientid": "1067",
+      "all": "0",
+      "areaid": "3"
+    },
+    "sha256": "d3f015d4edbca60228e5c753a33ca332cd1bb3cb11cedcfb75b7765608f5122c"
+  },
+  {
+    "source": "os-login.har",
+    "entry": 138,
+    "host": "api.infoldgames.com",
+    "path": "/v1/gameconfig/privacyagreement",
+    "method": "GET",
+    "selectors": {
+      "clientid": "1067",
+      "all": "0",
+      "areaid": "3"
+    },
+    "sha256": "d3f015d4edbca60228e5c753a33ca332cd1bb3cb11cedcfb75b7765608f5122c"
+  },
+  {
+    "source": "os-login.har",
+    "entry": 139,
+    "host": "api.infoldgames.com",
+    "path": "/v1/gameconfig/entries",
+    "method": "GET",
+    "selectors": {
+      "codes": "%5B%22CMP_Popup%22%5D",
+      "clientid": "1067",
+      "zoneid": "0",
+      "platid": "0",
+      "onlyEffect": "true"
+    },
+    "sha256": "d0dbd9efdff43256671651e90e23bd14bbe6311a53510f076777a800544a38d9"
+  },
+  {
+    "source": "os-login.har",
+    "entry": 140,
+    "host": "api.infoldgames.com",
+    "path": "/v1/gameconfig/entries",
+    "method": "GET",
+    "selectors": {
+      "codes": "%5B%22CMP_Popup%22%5D",
+      "clientid": "1067",
+      "zoneid": "0",
+      "platid": "0",
+      "onlyEffect": "true"
+    },
+    "sha256": "d0dbd9efdff43256671651e90e23bd14bbe6311a53510f076777a800544a38d9"
+  },
+  {
+    "source": "os-login.har",
+    "entry": 148,
+    "host": "api.infoldgames.com",
+    "path": "/v1/gameconfig/privacyagreement",
+    "method": "GET",
+    "selectors": {
+      "clientid": "1067",
+      "all": "0",
+      "areaid": "3"
+    },
+    "sha256": "d3f015d4edbca60228e5c753a33ca332cd1bb3cb11cedcfb75b7765608f5122c"
+  },
+  {
+    "source": "os-login.har",
+    "entry": 149,
+    "host": "api.infoldgames.com",
+    "path": "/v1/gameconfig/entries",
+    "method": "GET",
+    "selectors": {
+      "codes": "%5B%22CMP_Popup%22%5D",
+      "clientid": "1067",
+      "zoneid": "0",
+      "platid": "0",
+      "onlyEffect": "true"
+    },
+    "sha256": "d0dbd9efdff43256671651e90e23bd14bbe6311a53510f076777a800544a38d9"
+  },
+  {
+    "source": "os-login.har",
+    "entry": 223,
+    "host": "api.infoldgames.com",
+    "path": "/v1/gameconfig/privacyagreement",
+    "method": "GET",
+    "selectors": {
+      "clientid": "1067",
+      "all": "0",
+      "areaid": "3"
+    },
+    "sha256": "d3f015d4edbca60228e5c753a33ca332cd1bb3cb11cedcfb75b7765608f5122c"
+  },
+  {
+    "source": "os-login.har",
+    "entry": 225,
+    "host": "api.infoldgames.com",
+    "path": "/v1/gameconfig/entries",
+    "method": "GET",
+    "selectors": {
+      "codes": "%5B%22CMP_Popup%22%5D",
+      "clientid": "1067",
+      "zoneid": "0",
+      "platid": "0",
+      "onlyEffect": "true"
+    },
+    "sha256": "d0dbd9efdff43256671651e90e23bd14bbe6311a53510f076777a800544a38d9"
+  },
+  {
+    "source": "os-login.har",
+    "entry": 230,
+    "host": "api.infoldgames.com",
+    "path": "/v1/gameconfig/parameter",
+    "method": "GET",
+    "selectors": {
+      "key": "ResUpdate_CheckResIntegrity",
+      "clientid": "1067"
+    },
+    "sha256": "fc2a015a88fbfa43d3d6d461dcd7667c127355a15e2039999636f37361da4625"
+  },
+  {
+    "source": "os-login.har",
+    "entry": 238,
+    "host": "api.infoldgames.com",
+    "path": "/v1/gameconfig/parameter",
+    "method": "GET",
+    "selectors": {
+      "key": "PreDownload_Switch",
+      "clientid": "1067"
+    },
+    "sha256": "bf9a9d69cfc86e517bc8980ccc85a5e5a4f229ffd5f3d26778ac442ad1c7c425"
+  },
+  {
+    "source": "os-login.har",
+    "entry": 245,
+    "host": "api.infoldgames.com",
+    "path": "/v1/gameconfig/patchlist",
+    "method": "GET",
+    "selectors": {
+      "clientid": "1067",
+      "channel": "76",
+      "region": "83"
+    },
+    "sha256": "3ffcaae1f1e9759786383550cc55e3b9793b9122b9dee865d3687ce0dff0f369"
+  },
+  {
+    "source": "os-login.har",
+    "entry": 249,
+    "host": "passport.infoldgames.com",
+    "path": "/v1/accessories/init",
+    "method": "POST",
+    "selectors": {
+      "app_id": "DsEb1STz",
+      "client_id": "1070",
+      "clientid": "1070",
+      "lang": "en",
+      "region": "76",
+      "sdk_channel": "76"
+    },
+    "sha256": "2363c72fe0eb0a428dd7d0bd9e06d175a05119664c0f61c47ea6094d968d658f"
+  },
+  {
+    "source": "os-login.har",
+    "entry": 250,
+    "host": "passport.infoldgames.com",
+    "path": "/v1/payment/init",
+    "method": "POST",
+    "selectors": {
+      "app_id": "DsEb1STz",
+      "client_id": "1070",
+      "clientid": "1070",
+      "lang": "en",
+      "region": "76",
+      "sdk_channel": "76"
+    },
+    "sha256": "3d7fab6556720e154fafa6adc38710a596487f2c345c2ac7a3703898186c55f3"
+  },
+  {
+    "source": "os-login.har",
+    "entry": 253,
+    "host": null,
+    "path": "/v1/conf/sdkclient",
+    "method": "GET",
+    "selectors": {
+      "clientid": "1070",
+      "sdkversion": "2.1.7.20",
+      "sdk_channel": "76",
+      "lang": "en"
+    },
+    "sha256": "a275811ffae384240b68dabcb81e5a6bd003c4e91bdcf9c4ab82db7d789a68c9"
+  },
+  {
+    "source": "os-login.har",
+    "entry": 254,
+    "host": "api.infoldgames.com",
+    "path": "/v1/gameconfig/privacyagreement",
+    "method": "GET",
+    "selectors": {
+      "clientid": "1067",
+      "all": "0",
+      "areaid": "3"
+    },
+    "sha256": "d3f015d4edbca60228e5c753a33ca332cd1bb3cb11cedcfb75b7765608f5122c"
+  },
+  {
+    "source": "os-login.har",
+    "entry": 255,
+    "host": "api.infoldgames.com",
+    "path": "/v1/gameconfig/privacyagreement",
+    "method": "GET",
+    "selectors": {
+      "clientid": "1067",
+      "all": "0",
+      "areaid": "3"
+    },
+    "sha256": "d3f015d4edbca60228e5c753a33ca332cd1bb3cb11cedcfb75b7765608f5122c"
+  },
+  {
+    "source": "os-login.har",
+    "entry": 259,
+    "host": "api.infoldgames.com",
+    "path": "/v1/gameconfig/entries",
+    "method": "GET",
+    "selectors": {
+      "codes": "%5B%22CMP_Popup%22%5D",
+      "clientid": "1067",
+      "zoneid": "0",
+      "platid": "0",
+      "onlyEffect": "true"
+    },
+    "sha256": "d0dbd9efdff43256671651e90e23bd14bbe6311a53510f076777a800544a38d9"
+  },
+  {
+    "source": "os-login.har",
+    "entry": 260,
+    "host": "api.infoldgames.com",
+    "path": "/v1/gameconfig/entries",
+    "method": "GET",
+    "selectors": {
+      "codes": "%5B%22CMP_Popup%22%5D",
+      "clientid": "1067",
+      "zoneid": "0",
+      "platid": "0",
+      "onlyEffect": "true"
+    },
+    "sha256": "d0dbd9efdff43256671651e90e23bd14bbe6311a53510f076777a800544a38d9"
+  },
+  {
+    "source": "os-login.har",
+    "entry": 261,
+    "host": null,
+    "path": "/v1/gameconfig/entries",
+    "method": "POST",
+    "selectors": {
+      "sdkversion": "2.1.7.20",
+      "sdk_channel": "76",
+      "lang": "en",
+      "clientid": "1067",
+      "codes": "[\"America_Age_Policy_Parameter\"]"
+    },
+    "sha256": "ddc571079ce55ae056f7f073e86e6ecdb1a3fc95f634adac8d851a029028f9b5"
+  },
+  {
+    "source": "os-login.har",
+    "entry": 262,
+    "host": "api.infoldgames.com",
+    "path": "/v1/gameconfig/parameter",
+    "method": "GET",
+    "selectors": {
+      "key": "AgeCheck_OverTime",
+      "clientid": "1067"
+    },
+    "sha256": "0c372bf6d238db4480ef4ef19f4ab0f146f1ce4e9460eadf240a4d7ed1fdc552"
+  },
+  {
+    "source": "os-login.har",
+    "entry": 26,
+    "host": "api.infoldgames.com",
+    "path": "/v1/announcelist",
+    "method": "GET",
+    "selectors": {
+      "clientid": "1067",
+      "lang": "zh-cn",
+      "platid": "76"
+    },
+    "sha256": "016c5b30a51f23e994259a030191bf2ba68f3f052027b2829f590fcbc58de9be"
+  }
+]

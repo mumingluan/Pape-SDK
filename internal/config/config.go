@@ -2,6 +2,7 @@ package config
 
 import (
 	"bytes"
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -9,23 +10,27 @@ import (
 )
 
 type Config struct {
-	DBURI               string           `yaml:"db_uri"`
-	ConfigDir           string           `yaml:"config_dir"`
-	PatchList           PatchList        `yaml:"patchlist"`
-	Sdk                 Service          `yaml:"sdk"`
-	UserCenter          AccessService    `yaml:"user_center"`
-	Inner               InnerService     `yaml:"inner_api"`
-	BOOIInner           map[uint32]Peer  `yaml:"booi_inner"`
-	Storage             Storage          `yaml:"storage"`
-	Proxy               Proxy            `yaml:"proxy"`
-	Auth                Authentication   `yaml:"authentication"`
-	Constants           Constants        `yaml:"sdk_constants"`
-	UserCenterConstants Constants        `yaml:"user_center_constants"`
-	RealNameIdentity    RealNameIdentity `yaml:"real_name_identity"`
-	Hosts               Hosts            `yaml:"hosts"`
-	SMS                 SMS              `yaml:"sms"`
+	GameConfigDirs      map[string]string `yaml:"game_config_dirs"`
+	DBURI               string            `yaml:"db_uri"`
+	ConfigDir           string            `yaml:"config_dir"`
+	PatchList           PatchList         `yaml:"patchlist"`
+	Sdk                 Service           `yaml:"sdk"`
+	UserCenter          AccessService     `yaml:"user_center"`
+	Inner               InnerService      `yaml:"inner_api"`
+	BOOIInner           map[uint32]Peer   `yaml:"booi_inner"`
+	Storage             Storage           `yaml:"storage"`
+	Proxy               Proxy             `yaml:"proxy"`
+	Auth                Authentication    `yaml:"authentication"`
+	Constants           Constants         `yaml:"-"`
+	DefaultApplication  string            `yaml:"default_application"`
+	UserCenterConstants Constants         `yaml:"user_center_constants"`
+	RealNameIdentity    RealNameIdentity  `yaml:"real_name_identity"`
+	Hosts               Hosts             `yaml:"hosts"`
+	SMS                 SMS               `yaml:"sms"`
 
-	BaseDir string `yaml:"-"`
+	Applications map[string]Application `yaml:"applications"`
+	Email        Email                  `yaml:"email"`
+	BaseDir      string                 `yaml:"-"`
 }
 
 type PatchList struct {
@@ -165,9 +170,6 @@ func Load(path string) (*Config, error) {
 	if cfg.Storage.MaxUploadBytes == 0 {
 		cfg.Storage.MaxUploadBytes = 256 << 20
 	}
-	if cfg.Constants.ClientID == 0 {
-		cfg.Constants.ClientID = 1068
-	}
 	if cfg.UserCenterConstants.ClientID == 0 {
 		cfg.UserCenterConstants.ClientID = 1003
 	}
@@ -189,6 +191,32 @@ func Load(path string) (*Config, error) {
 	if cfg.RealNameIdentity.RealID == "" {
 		cfg.RealNameIdentity.RealID = "110101199001010010"
 	}
+	seenClients := map[int]bool{}
+	for id, app := range cfg.Applications {
+		if app.AppID == "" {
+			app.AppID = id
+		}
+		if app.AppID != id || app.ClientID == 0 || app.AppKey == "" || app.AESKey == "" {
+			return nil, fmt.Errorf("invalid application configuration: %s", id)
+		}
+		if seenClients[app.ClientID] {
+			return nil, fmt.Errorf("duplicate application client_id: %d", app.ClientID)
+		}
+		seenClients[app.ClientID] = true
+		cfg.Applications[id] = app
+	}
+	if cfg.DefaultApplication == "" && len(cfg.Applications) == 1 {
+		for id := range cfg.Applications {
+			cfg.DefaultApplication = id
+		}
+	}
+	if len(cfg.Applications) > 0 || cfg.DefaultApplication != "" {
+		app, ok := cfg.Applications[cfg.DefaultApplication]
+		if !ok {
+			return nil, fmt.Errorf("default_application must name a configured application")
+		}
+		cfg.Constants = app.Constants
+	}
 	return &cfg, nil
 }
 
@@ -201,4 +229,47 @@ func (c *Config) Resolve(path string) string {
 
 func (c *Config) ConfigPath(name string) string {
 	return c.Resolve(filepath.Join(c.ConfigDir, name))
+}
+
+type Application struct {
+	Constants    `yaml:",inline"`
+	ConfigDir    string `yaml:"config_dir"`
+	Region       string `yaml:"region"`
+	Channel      string `yaml:"channel"`
+	GameClientID string `yaml:"game_client_id"`
+	API          string `yaml:"api"`
+}
+type Email struct {
+	Mode      string `yaml:"mode"`
+	Host      string `yaml:"host"`
+	Port      int    `yaml:"port"`
+	Username  string `yaml:"username"`
+	Password  string `yaml:"password"`
+	From      string `yaml:"from"`
+	OutboxDir string `yaml:"outbox_dir"`
+}
+
+func (c *Config) Application(appID, clientID, region, channel string) (Application, bool) {
+	if appID != "" {
+		app, ok := c.Applications[appID]
+		return app, ok
+	}
+	var found Application
+	matches := 0
+	for _, app := range c.Applications {
+		if clientID == fmt.Sprint(app.ClientID) {
+			return app, true
+		}
+		if clientID == app.GameClientID && (channel != "" && channel == app.Channel || channel == "" && region != "" && region == app.Region) {
+			found = app
+			matches++
+		}
+	}
+	return found, matches == 1
+}
+func (c *Config) ApplicationConfigPath(app Application, name string) string {
+	if app.ConfigDir != "" {
+		return c.Resolve(filepath.Join(app.ConfigDir, name))
+	}
+	return c.ConfigPath(name)
 }

@@ -86,6 +86,22 @@ func newProxyHandler(cfg *config.Config, internal http.Handler) (http.Handler, e
 		if err != nil {
 			return nil, fmt.Errorf("load proxy gate targets: %w", err)
 		}
+		for _, app := range cfg.Applications {
+			path := cfg.ApplicationConfigPath(app, "serverlist.json")
+			if _, err := os.Stat(path); os.IsNotExist(err) {
+				continue
+			}
+			extra, err := loadProxyGateTargets(path)
+			if err != nil {
+				return nil, err
+			}
+			for authority := range extra.httpAuthorities {
+				gateTargets.httpAuthorities[authority] = struct{}{}
+			}
+			for authority := range extra.tunnelAuthorities {
+				gateTargets.tunnelAuthorities[authority] = struct{}{}
+			}
+		}
 		log.Printf("[proxy] loaded gate allowlist: http=%d tunnel=%d", len(gateTargets.httpAuthorities), len(gateTargets.tunnelAuthorities))
 	}
 	certificates := &proxyCertificateManager{
@@ -280,7 +296,7 @@ func (p *proxyServer) serveMITMConnect(w http.ResponseWriter, r *http.Request) {
 
 func (p *proxyServer) rejectNonPapegames(w http.ResponseWriter, r *http.Request) {
 	log.Printf("[proxy] %s %s rejected: non-Papegames host", r.Method, r.Host)
-	http.Error(w, "proxy only permits papegames.com", http.StatusForbidden)
+	http.Error(w, "proxy only permits Papergames and Infold domains", http.StatusForbidden)
 }
 
 func (p *proxyServer) serveInternal(w http.ResponseWriter, r *http.Request) {
@@ -419,7 +435,7 @@ func authorityHostname(authority string) string {
 
 func isPapegamesHost(host string) bool {
 	host = strings.TrimSuffix(strings.ToLower(strings.TrimSpace(host)), ".")
-	return host == "papegames.com" || strings.HasSuffix(host, ".papegames.com")
+	return host == "papegames.com" || strings.HasSuffix(host, ".papegames.com") || host == "infoldgames.com" || strings.HasSuffix(host, ".infoldgames.com")
 }
 
 func displayProtocol(proto string) string {
@@ -482,7 +498,7 @@ func loadOrCreateProxyLeaf(ca *x509.Certificate, caKey crypto.Signer, certPath, 
 	if err := os.MkdirAll(filepath.Dir(certPath), 0o755); err != nil {
 		return tls.Certificate{}, false, err
 	}
-	leaf, certPEM, keyPEM, err := createProxyLeaf(ca, caKey, "*.papegames.com", []string{"papegames.com", "*.papegames.com"})
+	leaf, certPEM, keyPEM, err := createProxyLeaf(ca, caKey, "*.papegames.com", []string{"papegames.com", "*.papegames.com", "infoldgames.com", "*.infoldgames.com"})
 	if err != nil {
 		return tls.Certificate{}, false, err
 	}
@@ -544,5 +560,5 @@ func proxyLeafValid(leaf tls.Certificate, ca *x509.Certificate) bool {
 		CurrentTime: time.Now(),
 		KeyUsages:   []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
 	})
-	return err == nil
+	return err == nil && cert.VerifyHostname("passport.infoldgames.com") == nil
 }

@@ -1,0 +1,52 @@
+{
+    "gameConfigEntries": [
+        {
+            "id": 127,
+            "code": "Announce_Tab",
+            "name": "",
+            "order": 1,
+            "remark": "",
+            "pre_entry_id": null,
+            "ass_id": null,
+            "default_open": 0,
+            "bus_id": 1,
+            "extra": {
+                "tab_name": "[{\"lang\":\"zh-cn\",\"text\":\"系统公告\"}]",
+                "bus_id": 1,
+                "default_open": 0
+            },
+            "test_switch": 0,
+            "stime": null,
+            "etime": null,
+            "stimestamp": 0,
+            "etimestamp": 0,
+            "permanent": 0,
+            "platIds": [],
+            "zoneIds": []
+        },
+        {
+            "id": 128,
+            "code": "Announce_Tab",
+            "name": "",
+            "order": 2,
+            "remark": "",
+            "pre_entry_id": null,
+            "ass_id": null,
+            "default_open": 1,
+            "bus_id": 2,
+            "extra": {
+                "tab_name": "[{\"lang\":\"zh-cn\",\"text\":\"活动公告\"}]",
+                "bus_id": 2,
+                "default_open": 1
+            },
+            "test_switch": 0,
+            "stime": null,
+            "etime": null,
+            "stimestamp": 0,
+            "etimestamp": 0,
+            "permanent": 0,
+            "platIds": [],
+            "zoneIds": []
+        }
+    ]
+}

@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -66,5 +67,34 @@ func TestExampleConfigUsesCurrentSchema(t *testing.T) {
 	}
 	if cfg.Storage.Endpoint != "https://storage-deepspace.papegames.com" || cfg.Storage.ProxyBaseURL != "http://127.0.0.1:65287" || cfg.Storage.PublicHost != "storage-deepspace.papegames.com" {
 		t.Fatalf("unexpected storage config: %+v", cfg.Storage)
+	}
+}
+
+func TestDefaultApplicationReplacesSDKConstants(t *testing.T) {
+	raw := `default_application: overseas
+applications:
+  cn:
+    client_id: 1068
+    app_key: cn-key
+    aes_key: cn-aes
+  overseas:
+    client_id: 1070
+    app_key: os-key
+    aes_key: os-aes
+`
+	path := filepath.Join(t.TempDir(), "config.yaml")
+	os.WriteFile(path, []byte(raw), 0600)
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Constants.AppID != "overseas" || cfg.Constants.ClientID != 1070 || cfg.Constants.AppKey != "os-key" {
+		t.Fatal("default application did not provide signing constants")
+	}
+	for _, invalid := range []string{strings.Replace(raw, "default_application: overseas", "default_application: missing", 1), strings.Replace(raw, "default_application: overseas", "", 1), raw + "sdk_constants: {}\n"} {
+		os.WriteFile(path, []byte(invalid), 0600)
+		if _, err := Load(path); err == nil {
+			t.Fatal("invalid default or removed schema accepted")
+		}
 	}
 }

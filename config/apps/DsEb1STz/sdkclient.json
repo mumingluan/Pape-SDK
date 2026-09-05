@@ -1,0 +1,157 @@
+{
+  "config": {
+    "adMaxRetryCount": 5,
+    "adMaximumLatency": 15,
+    "ali_log_sls_switch": 1,
+    "ali_log_switch": 1,
+    "conversionTlogConfig": 1,
+    "create_log_file": 0,
+    "currency": [],
+    "deliver_retry_count": 5,
+    "deliver_retry_round_times": 20,
+    "emailVerify": 0,
+    "enableCustomToJson": 1,
+    "enableNewAdReport": 0,
+    "enableReportCancel": 0,
+    "enableReportRequest": 0,
+    "guest_recharge": 1,
+    "ios_idfa_minversion": "14",
+    "is_audit": 0,
+    "logcat": 0,
+    "login_device_check": {
+      "platforms": {
+        "android": 1,
+        "ios": 1,
+        "pc": 1,
+        "web": 1,
+        "xbox": 1
+      },
+      "switch": 0,
+      "ttl": 86400
+    },
+    "login_limit_age": {
+      "min": 18,
+      "switch": false
+    },
+    "netDiagnosis": [],
+    "netDiagnosis2": [
+      {
+        "parentclass": {
+          "parenttype": 0,
+          "subclass": [
+            {
+              "id": "19936517-0571-4884-8fd7-b5dc642c8a79",
+              "subtype": 0
+            },
+            {
+              "id": "394840cf-38c4-46eb-a297-97c06b1aefc8",
+              "subtype": 1
+            },
+            {
+              "dest": "api.infoldgames.com",
+              "id": "6a94ee82-26e8-414e-8df3-3be53ad92372",
+              "subtype": 2
+            },
+            {
+              "dest": "www.google.com",
+              "id": "296af8de-0ae4-4e6b-8ecc-c1f619f404c1",
+              "monitorType": 1,
+              "subtype": 3
+            }
+          ]
+        }
+      },
+      {
+        "parentclass": {
+          "parenttype": 1,
+          "subclass": [
+            {
+              "dest": "api.infoldgames.com",
+              "id": "7317ef18-a496-4a69-85b3-3a5f3a81f004",
+              "monitorType": 1,
+              "subtype": 4
+            }
+          ]
+        }
+      },
+      {
+        "parentclass": {
+          "parenttype": 2,
+          "subclass": [
+            {
+              "dest": "x3en-client-v8bci8bzmq8vqa.infoldgames.com",
+              "id": "2a199342-422c-4e28-b5e2-9ac713eb1988",
+              "monitorType": 1,
+              "subtype": 5
+            },
+            {
+              "dest": "https://x3en-client-v8bci8bzmq8vqa.infoldgames.com/v8en-2026-test.txt",
+              "httpMethod": 1,
+              "id": "e67e892f-1a42-4bb7-b6aa-6590187d7527",
+              "monitorType": 3,
+              "subtype": 6
+            },
+            {
+              "dest": "x3asia-gatesvr.infoldgames.com",
+              "id": "15f36f39-9434-4487-aacb-ad31595c59c5",
+              "monitorType": 1,
+              "subtype": 7
+            },
+            {
+              "dest": "x3asia-gatesvr.infoldgames.com",
+              "id": "cb1ac617-0014-499c-b0ed-3535d5dde297",
+              "monitorType": 4,
+              "port": 13101,
+              "subtype": 8
+            }
+          ]
+        }
+      }
+    ],
+    "netDiagnosis3": [],
+    "network_monitor": "[]",
+    "payMsg": [
+      {
+        "chargetype": 4,
+        "isSuggest": true,
+        "name": "支付宝",
+        "show": false
+      },
+      {
+        "chargetype": 6,
+        "isSuggest": true,
+        "name": "微信",
+        "show": false
+      },
+      {
+        "chargetype": 4,
+        "isSuggest": true,
+        "name": "花呗",
+        "show": false
+      },
+      {
+        "chargetype": 56,
+        "isSuggest": true,
+        "name": "微信",
+        "show": false
+      }
+    ],
+    "pay_env": "release",
+    "payloadingtime": 60,
+    "ps_anti_addiction_open": 0,
+    "ps_report_online_time_interval": 300,
+    "psnEnableConsumeWhenReactived": false,
+    "psnUsePriceIgnoreCase": 1,
+    "qostlog": 1,
+    "qostlog_cache_count": 1000,
+    "realname": 0,
+    "refreshTokenCountdown": 168,
+    "send_tlog_url": "https://apm.infoldgames.com",
+    "trackEnabled": 0,
+    "trackingio_switch": []
+  },
+  "ret": 0,
+  "request_id": "63a630e2-6965-4894-b558-74b233eef8b7",
+  "msg": "OK",
+  "time": 1788630130
+}

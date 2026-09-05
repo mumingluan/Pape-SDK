@@ -47,13 +47,7 @@ const (
 
 var chinaMobilePattern = regexp.MustCompile(`^1[3-9][0-9]{9}$`)
 
-func normalizeChinaPhone(phone string) (string, error) {
-	phone = strings.TrimSpace(phone)
-	if !chinaMobilePattern.MatchString(phone) {
-		return "", errors.New("请输入正确的中国大陆手机号")
-	}
-	return phone, nil
-}
+func normalizeChinaPhone(account string) (string, error) { return NormalizeAccount(account) }
 
 func Open(dbURI, baseDir string) (*Store, error) {
 	driver, dsn, err := parseURI(dbURI, baseDir)
@@ -75,6 +69,10 @@ func Open(dbURI, baseDir string) (*Store, error) {
 	}
 	s := &Store{db: db, driver: driver}
 	if err := s.init(); err != nil {
+		db.Close()
+		return nil, err
+	}
+	if err := s.initBindings(); err != nil {
 		db.Close()
 		return nil, err
 	}
@@ -402,6 +400,21 @@ func (s *Store) migrateUnifiedUserIDs() error {
 	if err := rows.Close(); err != nil {
 		return err
 	}
+	// Unified IDs are permanent. Gaps from hard deletion must never renumber accounts.
+	unified := !hasOpenID && !hasNID
+	for _, user := range users {
+		if user.oldID < firstUserID {
+			unified = false
+		}
+	}
+	if unified {
+		if len(users) == 0 {
+			if err := s.setUserSequence(users); err != nil {
+				return err
+			}
+		}
+		return s.deleteOrphanCometSessions()
+	}
 	needsRenumber := len(users) > 0 && users[0].oldID != firstUserID
 	for index := range users {
 		if users[index].oldID != users[index].newID {
@@ -638,8 +651,18 @@ func (s *Store) VerifySMS(phone, scene, code string) error {
 	if err != nil {
 		return err
 	}
-	_, err = s.db.Exec("update sms_verifications set consumed_at = ? where id = ? and consumed_at is null", time.Now().Unix(), id)
-	return err
+	result, err := s.db.Exec("update sms_verifications set consumed_at = ? where id = ? and consumed_at is null", time.Now().Unix(), id)
+	if err != nil {
+		return err
+	}
+	n, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if n != 1 {
+		return errors.New("验证码已使用")
+	}
+	return nil
 }
 
 func (s *Store) CheckSMS(phone, scene, code string) error {
@@ -687,6 +710,14 @@ func (s *Store) GetOrCreateUser(phone string) (User, bool, error) {
 		}
 		u, err = s.touchExistingUser(u)
 		return u, false, err
+	}
+	if strings.Contains(phone, "@") {
+		u, err := s.CreateAccount("", phone, "")
+		if err != nil {
+			return User{}, false, err
+		}
+		u, err = s.issueAuthSession(u.ID)
+		return u, true, err
 	}
 	return s.createUser(phone)
 }
@@ -819,18 +850,15 @@ func (s *Store) SetPasswordHash(userID int64, hash string) error {
 	return err
 }
 
-func (s *Store) UpdatePhone(userID int64, phone string) error {
-	var err error
-	phone, err = normalizeChinaPhone(phone)
+func (s *Store) UpdatePhone(userID int64, account string) error {
+	value, err := NormalizeAccount(account)
 	if err != nil {
 		return err
 	}
-	now := time.Now().Unix()
-	_, err = s.db.Exec(`update users set
-		security_changed_at = case when phone <> ? then ? else security_changed_at end,
-		security_override = case when phone <> ? then null else security_override end,
-		phone = ? where id = ?`, phone, now, phone, phone, userID)
-	return err
+	if strings.Contains(value, "@") {
+		return s.UpdateBindings(userID, nil, &value)
+	}
+	return s.UpdateBindings(userID, &value, nil)
 }
 
 func (s *Store) DeleteUser(userID int64) error {
@@ -840,7 +868,7 @@ func (s *Store) DeleteUser(userID int64) error {
 		return err
 	}
 	defer tx.Rollback()
-	if _, err := tx.Exec(`update users set phone = phone || '#deleted#' || ?, token = '', refresh_token = null,
+	if _, err := tx.Exec(`update users set phone = phone || '#deleted#' || ?, email = null, token = '', refresh_token = null,
 		token_revoked_at = ?, long_token = null, deleted_at = ? where id = ? and deleted_at is null`, now, now, now, userID); err != nil {
 		return err
 	}
@@ -918,7 +946,7 @@ func (s *Store) CompleteCancellation(userID, now int64) (bool, error) {
 		return false, err
 	}
 	defer tx.Rollback()
-	result, err := tx.Exec(`update users set phone = phone || '#deleted#' || ?, token = '', refresh_token = null,
+	result, err := tx.Exec(`update users set phone = phone || '#deleted#' || ?, email = null, token = '', refresh_token = null,
 		token_revoked_at = ?, long_token = null, deleted_at = ?
 		where id = ? and cancellation_status = 2 and cancellation_at is not null and cancellation_at <= ? and deleted_at is null`,
 		now, now, now, userID, now)
@@ -953,7 +981,7 @@ func (s *Store) CreateCometSession(userID int64) (string, string, error) {
 }
 
 func (s *Store) userByPhone(phone string) (User, bool, error) {
-	row := s.db.QueryRow("select id, phone, token, refresh_token, password_hash, long_token, deleted_at from users where phone = ? and deleted_at is null", phone)
+	row := s.db.QueryRow("select id, phone, token, refresh_token, password_hash, long_token, deleted_at from users where (phone = ? or email = ?) and deleted_at is null", phone, phone)
 	return scanUser(row)
 }
 

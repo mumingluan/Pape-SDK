@@ -1,0 +1,16 @@
+{
+  "game_config_privacy_agreement": {
+    "id": 2,
+    "clientid": 1067,
+    "area_id": 3,
+    "version": 9,
+    "sdk_channel": 0,
+    "extra": {
+      "title": "Legal Notice",
+      "content": "Last Updated: Jul. 9, 2026\nEffective Date: Jul. 9, 2026\n\n[Update Notice]\nIn compliance with relevant laws and regulations, due to technical adjustments and upgrades, we have updated some of the content: \n1. Explains how we collect and utilize your data when you use the app, see [Privacy Policy I. 1.(6); I. 3.(1); I. 3.(8)].\n2. In order to access Infold Games' services, you have to be at least 13, and please be sure to read and fully understand the content of our User Agreement and Privacy Policy.\nPlease tap \"Agree\" to enter the game if you\n1. accept all the terms and conditions;\n2. confirm that you have reached the age of 13.",
+      "agree_text": "I have read and agree to <u><link=\"https://loveanddeepspace.infoldgames.com/en-EN/legal/terms\"><color=#54628E>User Agreement</color></link></u> and <u><link=\"https://loveanddeepspace.infoldgames.com/en-EN/legal/privacy\"><color=#54628E>Privacy Policy</color></link></u> and have reached the age of 13"
+    }
+  },
+  "ret": 0,
+  "msg": "OK"
+}

@@ -1,6 +1,7 @@
 package app
 
 import (
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -56,6 +57,8 @@ func (a *App) mountAuthenticationRoutes(router *gin.Engine) {
 	router.Any("/v1/user/account/code/verify", a.accountCodeVerify)
 	router.Any("/v1/user/password/reset", a.passwordReset)
 	router.POST("/v1/user/mobile/register", a.mobileRegister)
+	router.POST("/v1/user/email/register", a.emailRegister)
+	router.POST("/v1/user/account/unbind", a.accountUnbind)
 	router.POST("/v1/user/login", a.userLogin)
 	router.Any("/v1/user/login/token/refresh", a.refreshToken)
 	router.Any("/v1/user/profile/get", a.profileGet)
@@ -153,13 +156,14 @@ func (a *App) mountAccessoryRoutes(router *gin.Engine) {
 
 func (a *App) mountGameConfigRoutes(router *gin.Engine) {
 	router.GET("/v1/gameconfig/serverlist", a.serverList)
-	router.GET("/v1/gameconfig/entries", a.entries)
+	router.Any("/v1/gameconfig/entries", a.entries)
 	router.GET("/v1/gameconfig/privacyagreement", a.privacyAgreement)
 	router.GET("/v1/gameconfig/patchlist", a.patchList)
 	router.GET("/v1/gameconfig/ratingguidenodelist", a.ratingGuideNodeList)
 	router.GET("/v1/ip/locate", a.ipLocate)
 	router.GET("/v1/conf/sdkclient", a.sdkClient)
 	router.POST("/v1/payment/init", a.paymentInit)
+	router.POST("/v1/accessories/init", a.accessoriesInit)
 	router.GET("/v1/gameconfig/parameter", a.parameter)
 	router.Any("/v1/throttle/acquire", a.throttle)
 	router.GET("/v1/gameconfig/sensitive/client/version", a.sensitiveClientVersion)
@@ -184,6 +188,14 @@ func (a *App) mountSDKOnlyStubRoutes(router *gin.Engine) {
 }
 
 func (a *App) mountUserCenter(router *gin.Engine) {
+	assets := func(c *gin.Context) {
+		rel := "assets/" + strings.TrimPrefix(c.Param("filepath"), "/")
+		if !a.serveUserCenterFile(c, rel) {
+			c.JSON(404, gin.H{"error": "not_found"})
+		}
+	}
+	router.GET("/assets/*filepath", assets)
+	router.HEAD("/assets/*filepath", assets)
 	router.GET("/usercenter", a.userCenterHome)
 	router.GET("/usercenter/*filepath", a.userCenterAsset)
 	router.POST("/usercenter/send-code", a.userCenterSendCode)

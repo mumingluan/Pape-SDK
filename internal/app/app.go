@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -44,6 +45,19 @@ func (a *App) form(c *gin.Context) (map[string]string, int64, error) {
 	providedSDKSignature := out["sig"]
 	if needsSign && providedSign == "" && providedSDKSignature == "" {
 		return nil, 0, errors.New("缺少签名")
+	}
+	if a.cfg != nil && len(a.cfg.Applications) > 0 && out["app_id"] != "" && out["app_id"] != a.userCenterBFF.AppID && out["app_id"] != a.bff.AppID {
+		if _, ok := a.cfg.Applications[out["app_id"]]; !ok {
+			return nil, 0, errors.New("未知应用")
+		}
+	}
+	if a.cfg != nil && out["app_id"] != "" {
+		if app, ok := a.cfg.Applications[out["app_id"]]; ok {
+			clientID := firstNonEmpty(out["clientid"], out["client_id"])
+			if clientID != "" && clientID != strconv.Itoa(app.ClientID) {
+				return nil, 0, errors.New("应用标识不匹配")
+			}
+		}
 	}
 	bff := a.bffFor(out)
 	if providedSign != "" {
@@ -89,8 +103,13 @@ func validSDKSignature(signature string) bool {
 }
 
 func (a *App) bffFor(out map[string]string) bffcrypto.BFF {
-	if out["app_id"] == a.userCenterBFF.AppID || out["clientid"] == a.userCenterClientID {
+	if (a.userCenterBFF.AppID != "" && out["app_id"] == a.userCenterBFF.AppID) || (a.userCenterClientID != "" && out["clientid"] == a.userCenterClientID) {
 		return a.userCenterBFF
+	}
+	if a.cfg != nil {
+		if app, ok := a.cfg.Application(out["app_id"], firstNonEmpty(out["clientid"], out["client_id"]), out["region"], firstNonEmpty(out["channel"], out["sdk_channel"])); ok {
+			return bffcrypto.BFF{AppID: app.AppID, AppKey: app.AppKey, AESKey: app.AESKey}
+		}
 	}
 	return a.bff
 }
@@ -105,7 +124,7 @@ func (a *App) passportBFF(c *gin.Context) bffcrypto.BFF {
 }
 
 func phoneOf(form map[string]string) string {
-	for _, k := range []string{"phone", "mobile", "account", "bind_account", "change_account", "new_phone"} {
+	for _, k := range []string{"phone", "mobile", "email", "account", "bind_account", "change_account", "new_phone"} {
 		if strings.TrimSpace(form[k]) != "" {
 			return strings.TrimSpace(form[k])
 		}
@@ -129,13 +148,7 @@ func (a *App) phoneForSMS(form map[string]string) (string, error) {
 
 var chinaMobilePattern = regexp.MustCompile(`^1[3-9][0-9]{9}$`)
 
-func normalizeChinaPhone(phone string) (string, error) {
-	phone = strings.TrimSpace(phone)
-	if !chinaMobilePattern.MatchString(phone) {
-		return "", errors.New("请输入正确的中国大陆手机号")
-	}
-	return phone, nil
-}
+func normalizeChinaPhone(account string) (string, error) { return store.NormalizeAccount(account) }
 
 func (a *App) issueSMS(phone string) (string, bool, error) {
 	return a.issueSMSForScene(phone, "default", "", false)
@@ -159,19 +172,27 @@ func (a *App) issueSMSForScene(phone, scene, ip string, authenticated bool) (str
 	if ip == "" {
 		ip = "unknown"
 	}
-	if a.cfg.Auth.RealSMS {
+	if a.cfg.Auth.RealSMS || strings.Contains(phone, "@") {
 		if err := a.store.CheckSMSRate(phone, ip); err != nil {
 			return "", false, err
 		}
 	}
-	code := phone[len(phone)-6:]
-	if a.cfg.Auth.RealSMS {
+	code := ""
+	if strings.Contains(phone, "@") {
+		code = randomDigits(6)
+		if err := a.sendEmailCode(phone, code, scene); err != nil {
+			return "", false, err
+		}
+	} else if a.cfg.Auth.RealSMS {
 		code = randomDigits(6)
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 		if err := a.sms.SendCode(ctx, phone, code, scene); err != nil {
 			return "", false, err
 		}
+	}
+	if code == "" {
+		code = phone[len(phone)-6:]
 	}
 	return code, true, a.store.IssueSMS(phone, scene, code, ip)
 }
@@ -446,11 +467,9 @@ func (a *App) sendCode(c *gin.Context) {
 		passportError(c, err)
 		return
 	}
-	if issued && a.cfg.Auth.RealSMS {
-		log.Printf("[sms] real code generated for %s: %s", phone, code)
-	}
+
 	if issued {
-		a.mirrorSMSCode(phone, code, c.ClientIP(), scene, "account", "login", "register", "bind", "change_phone", "usercenter")
+		a.mirrorSMSCode(phone, code, c.ClientIP(), scene, "account", "login", "web_login", "register", "bind", "change_phone", "usercenter")
 	}
 	c.JSON(200, httpx.Envelope(nil))
 }
@@ -475,9 +494,7 @@ func (a *App) sendCodeWithData(c *gin.Context) {
 		passportError(c, err)
 		return
 	}
-	if issued && a.cfg.Auth.RealSMS {
-		log.Printf("[sms] real code generated for %s: %s", phone, code)
-	}
+
 	if issued {
 		a.mirrorSMSCode(phone, code, c.ClientIP(), scene, "account", "login", "register", "password", "bind", "change_phone", "usercenter")
 	}
@@ -505,7 +522,11 @@ func (a *App) accountCodeVerify(c *gin.Context) {
 		passportError(c, err)
 		return
 	}
-	phone := phoneOf(form)
+	phone, err := a.phoneForSMS(form)
+	if err != nil {
+		passportError(c, err)
+		return
+	}
 	if phone == "" {
 		c.JSON(200, httpx.Envelope(gin.H{"verify_token": "local_" + randomHex(12)}))
 		return
@@ -527,7 +548,7 @@ func (a *App) passwordReset(c *gin.Context) {
 		passportError(c, err)
 		return
 	}
-	phone := phoneOf(form)
+	phone, err := a.phoneForSMS(form)
 	phone, err = normalizeChinaPhone(phone)
 	if err != nil {
 		passportError(c, err)
@@ -595,15 +616,19 @@ func (a *App) loginLike(c *gin.Context, isNew int) {
 		return
 	}
 	phone := phoneOf(form)
+	if c.Request.URL.Path == "/v1/user/email/register" && !strings.Contains(phone, "@") {
+		passportError(c, errors.New("请输入正确的邮箱地址"))
+		return
+	}
 	_, passwordProvided := form["password"]
 	passwordRequired := a.cfg.Auth.RealPassword || a.cfg.Auth.SMSOnlyRegister
-	if passwordRequired && passwordProvided && isNew == 0 {
+	if (passwordRequired || strings.Contains(phone, "@")) && passwordProvided && isNew == 0 {
 		u, err := a.passwordLogin(phone, form["password"])
 		if err != nil {
 			passportError(c, err)
 			return
 		}
-		a.encrypted(c, a.loginPayload(u, "", 0), ts)
+		a.encrypted(c, a.loginPayloadForRequest(c, u, "", 0), ts)
 		return
 	}
 	phone, err = normalizeChinaPhone(phone)
@@ -618,7 +643,7 @@ func (a *App) loginLike(c *gin.Context, isNew int) {
 	}
 	if isNew != 0 {
 		if exists && a.cfg.Auth.SMSOnlyRegister {
-			passportError(c, errors.New("该手机号不能重复注册"))
+			passportError(c, errors.New("该账号不能重复注册"))
 			return
 		}
 		if !exists && !a.cfg.Auth.AllowRegister {
@@ -635,11 +660,17 @@ func (a *App) loginLike(c *gin.Context, isNew int) {
 			return
 		}
 	}
+	if isNew != 0 && form["password"] != "" {
+		if err := validatePassword(form["password"]); err != nil {
+			passportError(c, err)
+			return
+		}
+	}
 	scene := form["scene"]
 	if scene == "" {
 		scene = "login"
 	}
-	if err := a.verifySMSForAnyScene(phone, form["code"], scene, "login", "account", "register", "usercenter"); err != nil {
+	if err := a.verifySMSForAnyScene(phone, form["code"], scene, "login", "web_login", "account", "register", "usercenter"); err != nil {
 		passportError(c, err)
 		return
 	}
@@ -648,13 +679,13 @@ func (a *App) loginLike(c *gin.Context, isNew int) {
 		passportError(c, err)
 		return
 	}
-	if passwordRequired && form["password"] != "" && (!a.cfg.Auth.SMSOnlyRegister || !userHasPassword(existing)) {
+	if form["password"] != "" && !userHasPassword(existing) {
 		if err := a.setPassword(u.ID, form["password"]); err != nil {
 			passportError(c, err)
 			return
 		}
 	}
-	a.encrypted(c, a.loginPayload(u, "", isNew), ts)
+	a.encrypted(c, a.loginPayloadForRequest(c, u, "", isNew), ts)
 }
 
 func (a *App) refreshToken(c *gin.Context) {
@@ -672,7 +703,7 @@ func (a *App) refreshToken(c *gin.Context) {
 		passportError(c, err)
 		return
 	}
-	a.encrypted(c, a.loginPayload(u, token, 0), ts)
+	a.encrypted(c, a.loginPayloadForRequest(c, u, token, 0), ts)
 }
 
 func (a *App) profileGet(c *gin.Context) {
@@ -700,11 +731,13 @@ func (a *App) phoneBindInfo(c *gin.Context) {
 		passportError(c, err)
 		return
 	}
-	bound := u.Phone != ""
+	phone, email := a.store.AccountBindings(u)
+	bound := phone != ""
 	c.JSON(200, httpx.Envelope(gin.H{
-		"phone":              u.Phone,
-		"mobile":             u.Phone,
+		"phone":              phone,
+		"mobile":             phone,
 		"account":            u.Phone,
+		"email":              email,
 		"bind":               bound,
 		"is_bind":            bound,
 		"bind_status":        map[bool]int{false: 0, true: 1}[bound],
@@ -722,6 +755,11 @@ func (a *App) accountBindPhone(c *gin.Context) {
 		passportError(c, err)
 		return
 	}
+	u, err := a.userFromFields(form)
+	if err != nil {
+		passportError(c, err)
+		return
+	}
 	newPhone, err := normalizeChinaPhone(phoneOf(form))
 	if err != nil {
 		passportError(c, err)
@@ -733,11 +771,6 @@ func (a *App) accountBindPhone(c *gin.Context) {
 		return
 	}
 	if err := a.verifySMSForAnyScene(newPhone, code, form["scene"], "bind", "account", "change_phone", "usercenter", "default", "login", "register", "password"); err != nil {
-		passportError(c, err)
-		return
-	}
-	u, err := a.userFromFields(form)
-	if err != nil {
 		passportError(c, err)
 		return
 	}
@@ -771,9 +804,9 @@ func (a *App) cometAcquire(c *gin.Context) {
 		return
 	}
 	channels := []string{
-		fmt.Sprintf("sdk#%d:%d/rw", a.cfg.Constants.ClientID, u.NID),
-		fmt.Sprintf("sdk#%d:all/rw", a.cfg.Constants.ClientID),
-		fmt.Sprintf("acem#%d:%d/rw", a.cfg.Constants.ClientID, u.NID),
+		fmt.Sprintf("sdk#%d:%d/rw", a.requestClientID(c), u.NID),
+		fmt.Sprintf("sdk#%d:all/rw", a.requestClientID(c)),
+		fmt.Sprintf("acem#%d:%d/rw", a.requestClientID(c), u.NID),
 	}
 	a.encrypted(c, gin.H{"recepit": token, "channels": channels}, ts)
 }
@@ -1032,30 +1065,77 @@ func (a *App) serverList(c *gin.Context) {
 }
 
 func (a *App) entries(c *gin.Context) {
+	_ = c.Request.ParseForm()
+	raw := c.Request.Form.Get("codes")
+	var codes []string
+	if err := json.Unmarshal([]byte(raw), &codes); err != nil {
+		decoded, decodeErr := url.QueryUnescape(raw)
+		if decodeErr != nil || json.Unmarshal([]byte(decoded), &codes) != nil {
+			c.JSON(400, gin.H{"error": "invalid codes"})
+			return
+		}
+	}
+	obj, err := data.LoadJSONC(a.requestConfigPath(c, "entries.json"))
+	if err == nil {
+		entries := []any{}
+		for _, code := range codes {
+			rows, exists := obj[code]
+			if !exists {
+				a.forwardUpstream(c, a.requestAPI(c), a.shouldCollect(c), "missing_entries:"+code, true)
+				return
+			}
+			if values, ok := rows.([]any); ok {
+				entries = append(entries, values...)
+			}
+		}
+		officialTextJSON(c, gin.H{"gameConfigEntries": entries, "ret": 0, "time": time.Now().Unix()})
+		return
+	}
+	if !os.IsNotExist(err) {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
 	name := "entries_cmp.json"
-	if strings.Contains(c.Request.URL.RawQuery, "Announce") {
-		name = "announce.json"
+	for _, code := range codes {
+		if strings.Contains(code, "Announce") {
+			name = "announce.json"
+		}
 	}
 	a.dataJSON(c, name, false)
 }
 
 func (a *App) privacyAgreement(c *gin.Context) {
-	a.dataJSON(c, "privacyagreement.json", false)
+	_ = c.Request.ParseForm()
+	name := "privacyagreement.json"
+	if area := c.Request.Form.Get("areaid"); area != "" {
+		if n, err := strconv.Atoi(area); err == nil && n >= 0 {
+			candidate := fmt.Sprintf("privacyagreement_area_%d.json", n)
+			if _, err := os.Stat(a.requestConfigPath(c, candidate)); err == nil {
+				name = candidate
+			} else if c.Request.Form.Get("clientid") == "1067" {
+				name = candidate
+			}
+		} else {
+			c.JSON(400, gin.H{"error": "invalid areaid"})
+			return
+		}
+	}
+	a.dataJSON(c, name, false)
 }
 
 func (a *App) patchList(c *gin.Context) {
 	if a.cfg.PatchList.Passthrough {
-		a.forwardUpstream(c, a.apiUpstreamAuthority(), a.shouldCollect(c), "patchlist_passthrough", true)
+		a.forwardUpstream(c, a.requestAPI(c), a.shouldCollect(c), "patchlist_passthrough", true)
 		return
 	}
 	a.dataJSON(c, "patchlist.json", true)
 }
 
 func (a *App) dataJSON(c *gin.Context, name string, includeMsg bool) {
-	obj, err := data.LoadJSONC(a.cfg.ConfigPath(name))
+	obj, err := data.LoadJSONC(a.requestConfigPath(c, name))
 	if err != nil {
 		if os.IsNotExist(err) {
-			a.forwardUpstream(c, a.apiUpstreamAuthority(), a.shouldCollect(c), "missing_config:"+name, true)
+			a.forwardUpstream(c, a.requestAPI(c), a.shouldCollect(c), "missing_config:"+name, true)
 			return
 		}
 		c.JSON(500, gin.H{"error": err.Error(), "file": name})
@@ -1065,10 +1145,10 @@ func (a *App) dataJSON(c *gin.Context, name string, includeMsg bool) {
 }
 
 func (a *App) sdkClient(c *gin.Context) {
-	obj, err := data.LoadJSONC(a.cfg.ConfigPath("sdkclient.json"))
+	obj, err := data.LoadJSONC(a.requestConfigPath(c, "sdkclient.json"))
 	if err != nil {
 		if os.IsNotExist(err) {
-			a.forwardUpstream(c, a.apiUpstreamAuthority(), a.shouldCollect(c), "missing_config:sdkclient.json", true)
+			a.forwardUpstream(c, a.requestAPI(c), a.shouldCollect(c), "missing_config:sdkclient.json", true)
 			return
 		}
 		c.JSON(500, gin.H{"error": err.Error(), "file": "sdkclient.json"})
@@ -1081,11 +1161,12 @@ func (a *App) sdkClient(c *gin.Context) {
 }
 
 func (a *App) parameter(c *gin.Context) {
-	key := c.Query("key")
-	obj, err := data.LoadJSONC(a.cfg.ConfigPath("parameter.json"))
+	_ = c.Request.ParseForm()
+	key := c.Request.Form.Get("key")
+	obj, err := data.LoadJSONC(a.requestConfigPath(c, "parameter.json"))
 	if err != nil {
 		if os.IsNotExist(err) {
-			a.forwardUpstream(c, a.apiUpstreamAuthority(), a.shouldCollect(c), "missing_config:parameter.json", true)
+			a.forwardUpstream(c, a.requestAPI(c), a.shouldCollect(c), "missing_config:parameter.json", true)
 			return
 		}
 		c.JSON(500, gin.H{"error": err.Error(), "file": "parameter.json"})
@@ -1093,17 +1174,17 @@ func (a *App) parameter(c *gin.Context) {
 	}
 	value, exists := obj[key]
 	if !exists {
-		a.forwardUpstream(c, a.apiUpstreamAuthority(), a.shouldCollect(c), "missing_parameter:"+key, true)
+		a.forwardUpstream(c, a.requestAPI(c), a.shouldCollect(c), "missing_parameter:"+key, true)
 		return
 	}
 	officialTextJSON(c, gin.H{"gameConfigParameter": gin.H{"key": key, "value": value}, "ret": 0, "time": time.Now().Unix()})
 }
 
 func (a *App) sensitiveClientVersion(c *gin.Context) {
-	obj, err := data.LoadJSONC(a.cfg.ConfigPath("sensitive_client_version.json"))
+	obj, err := data.LoadJSONC(a.requestConfigPath(c, "sensitive_client_version.json"))
 	if err != nil {
 		if os.IsNotExist(err) {
-			a.forwardUpstream(c, a.apiUpstreamAuthority(), a.shouldCollect(c), "missing_config:sensitive_client_version.json", true)
+			a.forwardUpstream(c, a.requestAPI(c), a.shouldCollect(c), "missing_config:sensitive_client_version.json", true)
 			return
 		}
 		c.JSON(500, gin.H{"error": err.Error(), "file": "sensitive_client_version.json"})
@@ -1121,7 +1202,7 @@ func (a *App) announceList(c *gin.Context) {
 }
 
 func (a *App) paymentInit(c *gin.Context) {
-	obj, err := data.LoadJSONC(a.cfg.ConfigPath("payment_init.json"))
+	obj, err := data.LoadJSONC(a.requestConfigPath(c, "payment_init.json"))
 	if err != nil {
 		if os.IsNotExist(err) {
 			a.forwardUpstream(c, a.cfg.Hosts.Passport, a.shouldCollect(c), "missing_config:payment_init.json", true)
@@ -1277,14 +1358,12 @@ func (a *App) userCenterSendCode(c *gin.Context) {
 		return
 	}
 	scene := c.DefaultPostForm("scene", "usercenter")
-	code, issued, err := a.issueSMSForScene(phone, scene, c.ClientIP(), false)
+	_, _, err = a.issueSMSForScene(phone, scene, c.ClientIP(), false)
 	if err != nil {
 		a.userCenterResult(c, err)
 		return
 	}
-	if issued && a.cfg.Auth.RealSMS {
-		log.Printf("[sms] real code generated for %s: %s", phone, code)
-	}
+
 	a.userCenterResult(c, nil)
 }
 
@@ -1516,12 +1595,13 @@ func (a *App) loginPayload(u store.User, token string, isNew int) gin.H {
 }
 
 func (a *App) profilePayload(u store.User) gin.H {
+	phone, email := a.store.AccountBindings(u)
 	return gin.H{
 		"nid":              u.NID,
-		"phone":            u.Phone,
-		"mobile":           u.Phone,
+		"phone":            phone,
+		"mobile":           phone,
 		"account":          u.Phone,
-		"email":            "",
+		"email":            email,
 		"birthday":         "",
 		"avatar":           "",
 		"nickname":         "",

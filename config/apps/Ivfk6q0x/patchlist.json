@@ -1,0 +1,37 @@
+{
+  "game_config_apk": {
+    "apk_version": "6.0.0",
+    "apk_url": "https://play.google.com/store/apps/details?id=com.papegames.lysk.kr"
+  },
+  "game_config_audit": 0,
+  "game_config_patch": {
+    "id": 80,
+    "clientid": 1067,
+    "region": 81,
+    "channel": 80,
+    "role": 0,
+    "mode": 0,
+    "extra": {
+      "hotfix_version": "1.7.1552",
+      "scene_version": "1.7.1550|17766846|3298061287",
+      "cdn_url": "https://x3kr-client-v8bci8bzmq8vqa.infoldgames.com/prd;https://x3kr-client-v8bci8bzmq8vqa-backup.infoldgames.com/prd",
+      "pre_version": "pre_1.5.3000|1.5.1006|3.0.0"
+    }
+  },
+  "game_config_patch_extra": {
+    "id": 21,
+    "clientid": 1067,
+    "region": 81,
+    "channel": 80,
+    "role": 0,
+    "mode": 0,
+    "extra": {
+      "pre_version": "pre_1.6.7000|1.6.1383|5.0.0"
+    }
+  },
+  "game_config_privacy_agreement_version": 0,
+  "ret": 0,
+  "request_id": "c6224959-3873-4cb0-b8f4-4afe1c1a6170",
+  "msg": "OK",
+  "time": 1788628158
+}

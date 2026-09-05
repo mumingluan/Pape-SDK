@@ -1,0 +1,16 @@
+{
+  "game_config_privacy_agreement": {
+    "id": 3,
+    "clientid": 1067,
+    "area_id": 4,
+    "version": 5,
+    "sdk_channel": 0,
+    "extra": {
+      "title": "プライバシーポリシー",
+      "content": "「恋と深空」プライバシーポリシー改訂のお知らせ\\n\\n・改訂日：令和８年７月９日\\n\\nInfoldのサービスをご利用になる前に、必ずInfoldプライバシーポリシーをよく読み、十分に理解した上でご利用ください。\\nプライバシーポリシーをすべて確認し、同意いただけるお客様は、「同意」をタップすると本サービスを利用することができます。\\n本規約に同意されない場合、本サービスを利用することはできません。",
+      "agree_text": "タップして<u><link=\"https://loveanddeepspace.infoldgames.com/ja-JP/legal/privacy\"><color=#54628E>プライバシーポリシー</color></link></u>を確認"
+    }
+  },
+  "ret": 0,
+  "msg": "OK"
+}

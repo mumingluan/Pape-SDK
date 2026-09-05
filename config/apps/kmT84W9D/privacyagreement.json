@@ -1,0 +1,13 @@
+{
+  "game_config_privacy_agreement": {
+    "id": 1,
+    "clientid": 1068,
+    "area_id": 1,
+    "version": 11,
+    "extra": {
+      "title": "叠纸游戏用户协议和隐私保护指引",
+      "content": "更新日期：2025/12/31\n生效日期：2025/12/31\n\n\n【版本更新提示】\n感谢您使用叠纸（以下称“我们”）服务！本次我们依据相关法律法规和技术规范更新了一些内容，主要包括：\n1. 进一步向您说明在享受部分服务时我们收集和使用您信息的情况（第一部分第3款第（7）项）；\n2. 进一步说明与第三方共享的个人信息的情况（第三方信息共享清单）；\n3. 在您使用叠纸服务前，请您务必审慎阅读、充分理解叠纸游戏用户协议、隐私政策、儿童隐私保护规则、第三方信息共享清单。<b><color=#dd8911>同时，您应特别注意前述协议中免除或者限制我们责任的条款、对您的权利进行限制的条款、约定争议解决方式和司法管辖的条款。</color></b>关于您的游戏信息隐私展示可前往设置-功能页面进行修改。如您已详细阅读并同意叠纸游戏用户协议、隐私政策、儿童隐私保护规则、第三方信息共享清单，请点击“同意”开始使用我们的服务，如您拒绝，将无法进入游戏。",
+      "agree_text": "点击查看<u><link=\"https://deepspace.papegames.com/notice/service\"><color=#54628E>叠纸游戏用户协议</color></link></u>，<u><link=\"https://deepspace.papegames.com/notice/privacy\"><color=#54628E>隐私保护指引</color></link></u>，<u><link=\"https://deepspace.papegames.com/notice/childPrivacy\"><color=#54628E>儿童隐私保护指引</color></link></u>，<u><link=\"https://deepspace.papegames.com/notice/sdkList\"><color=#54628E>第三方信息共享清单</color></link></u>"
+    }
+  }
+}

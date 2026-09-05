@@ -14,6 +14,7 @@ type AdminAccount struct {
 	ID                int64  `json:"id"`
 	OpenID            string `json:"openid"`
 	Phone             string `json:"phone"`
+	Email             string `json:"email"`
 	CreatedAt         int64  `json:"created_at"`
 	LastLoginAt       int64  `json:"last_login_at"`
 	Cancellation      int    `json:"cancellation_status"`
@@ -33,11 +34,11 @@ func (s *Store) AdminAccounts(query string, limit, offset int) ([]AdminAccount, 
 	}
 	query = strings.TrimSpace(query)
 	pattern := "%" + query + "%"
-	rows, err := s.db.Query(`select id, phone, created_at, last_login_at,
+	rows, err := s.db.Query(`select id, phone, coalesce(email, ''), created_at, last_login_at,
 		coalesce(cancellation_status, 0), coalesce(cancellation_at, 0), coalesce(deleted_at, 0),
 		coalesce(security_changed_at, 0), security_override
-		from users where (? = '' or phone like ? or cast(id as char) like ?)
-		order by id desc limit ? offset ?`, query, pattern, pattern, limit, offset)
+		from users where (? = '' or phone like ? or email like ? or cast(id as char) like ?)
+		order by id desc limit ? offset ?`, query, pattern, pattern, pattern, limit, offset)
 	if err != nil {
 		return nil, err
 	}
@@ -46,8 +47,12 @@ func (s *Store) AdminAccounts(query string, limit, offset int) ([]AdminAccount, 
 	for rows.Next() {
 		var item AdminAccount
 		var override sql.NullInt64
-		if err := rows.Scan(&item.ID, &item.Phone, &item.CreatedAt, &item.LastLoginAt, &item.Cancellation, &item.CancellationAt, &item.DeletedAt, &item.SecurityChangedAt, &override); err != nil {
+		if err := rows.Scan(&item.ID, &item.Phone, &item.Email, &item.CreatedAt, &item.LastLoginAt, &item.Cancellation, &item.CancellationAt, &item.DeletedAt, &item.SecurityChangedAt, &override); err != nil {
 			return nil, err
+		}
+		if strings.Contains(item.Phone, "@") {
+			item.Email = strings.SplitN(item.Phone, "#deleted#", 2)[0]
+			item.Phone = ""
 		}
 		item.OpenID = fmt.Sprintf("%d", item.ID)
 		applySecurityStatus(&item, override)
@@ -59,11 +64,11 @@ func (s *Store) AdminAccounts(query string, limit, offset int) ([]AdminAccount, 
 func (s *Store) AdminAccountByID(id int64) (AdminAccount, bool, error) {
 	var item AdminAccount
 	var override sql.NullInt64
-	err := s.db.QueryRow(`select id, phone, created_at, last_login_at,
+	err := s.db.QueryRow(`select id, phone, coalesce(email, ''), created_at, last_login_at,
 		coalesce(cancellation_status, 0), coalesce(cancellation_at, 0), coalesce(deleted_at, 0),
 		coalesce(security_changed_at, 0), security_override
 		from users where id = ?`, id).Scan(
-		&item.ID, &item.Phone, &item.CreatedAt, &item.LastLoginAt, &item.Cancellation, &item.CancellationAt, &item.DeletedAt,
+		&item.ID, &item.Phone, &item.Email, &item.CreatedAt, &item.LastLoginAt, &item.Cancellation, &item.CancellationAt, &item.DeletedAt,
 		&item.SecurityChangedAt, &override,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -71,6 +76,10 @@ func (s *Store) AdminAccountByID(id int64) (AdminAccount, bool, error) {
 	}
 	if err != nil {
 		return AdminAccount{}, false, err
+	}
+	if strings.Contains(item.Phone, "@") {
+		item.Email = strings.SplitN(item.Phone, "#deleted#", 2)[0]
+		item.Phone = ""
 	}
 	item.OpenID = fmt.Sprintf("%d", item.ID)
 	applySecurityStatus(&item, override)
@@ -118,26 +127,7 @@ func (s *Store) SetSecurityOverride(id int64, safe bool) error {
 }
 
 func (s *Store) AdminUpdateAccount(id int64, phone string) error {
-	phone, err := normalizeChinaPhone(phone)
-	if err != nil {
-		return err
-	}
-	now := time.Now().Unix()
-	result, err := s.db.Exec(`update users set
-		security_changed_at = case when phone <> ? then ? else security_changed_at end,
-		security_override = case when phone <> ? then null else security_override end,
-		phone = ? where id = ?`, phone, now, phone, phone, id)
-	if err != nil {
-		return err
-	}
-	changed, err := result.RowsAffected()
-	if err != nil {
-		return err
-	}
-	if changed != 1 {
-		return errors.New("账号不存在")
-	}
-	return nil
+	return s.UpdateBindings(id, &phone, nil)
 }
 
 func (s *Store) RestoreUser(id int64, phone string) error {
@@ -153,8 +143,12 @@ func (s *Store) RestoreUser(id int64, phone string) error {
 	if err != nil {
 		return err
 	}
-	result, err := s.db.Exec(`update users set phone = ?, cancellation_status = 1,
-		cancellation_at = null, deleted_at = null, security_changed_at = ?, security_override = null where id = ?`, phone, time.Now().Unix(), id)
+	var email any
+	if strings.Contains(phone, "@") {
+		email = phone
+	}
+	result, err := s.db.Exec(`update users set phone = ?, email = ?, cancellation_status = 1,
+		cancellation_at = null, deleted_at = null, security_changed_at = ?, security_override = null where id = ?`, phone, email, time.Now().Unix(), id)
 	if err != nil {
 		return err
 	}

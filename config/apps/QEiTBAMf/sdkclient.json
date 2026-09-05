@@ -1,0 +1,157 @@
+{
+  "config": {
+    "adMaxRetryCount": 5,
+    "adMaximumLatency": 15,
+    "ali_log_sls_switch": 1,
+    "ali_log_switch": 1,
+    "conversionTlogConfig": 1,
+    "create_log_file": 0,
+    "currency": [],
+    "deliver_retry_count": 5,
+    "deliver_retry_round_times": 20,
+    "emailVerify": 0,
+    "enableCustomToJson": 1,
+    "enableNewAdReport": 0,
+    "enableReportCancel": 0,
+    "enableReportRequest": 0,
+    "guest_recharge": 1,
+    "ios_idfa_minversion": "14",
+    "is_audit": 0,
+    "logcat": 0,
+    "login_device_check": {
+      "platforms": {
+        "android": 1,
+        "ios": 1,
+        "pc": 1,
+        "web": 1,
+        "xbox": 1
+      },
+      "switch": 0,
+      "ttl": 86400
+    },
+    "login_limit_age": {
+      "min": 18,
+      "switch": false
+    },
+    "netDiagnosis": [],
+    "netDiagnosis2": [
+      {
+        "parentclass": {
+          "parenttype": 0,
+          "subclass": [
+            {
+              "id": "f37a2f60-f8ce-46be-a6d1-066aa1241a77",
+              "subtype": 0
+            },
+            {
+              "id": "91be562c-633e-4be0-a91c-f6beb3826d60",
+              "subtype": 1
+            },
+            {
+              "dest": "x3asia-loginsvr.infoldgames.com",
+              "id": "aaf5933f-686b-4e43-b17b-fdc733261901",
+              "subtype": 2
+            },
+            {
+              "dest": "x3asia-loginsvr.infoldgames.com",
+              "id": "706bdd12-c30a-4116-a678-53c22f3901c7",
+              "monitorType": 1,
+              "subtype": 3
+            }
+          ]
+        }
+      },
+      {
+        "parentclass": {
+          "parenttype": 1,
+          "subclass": [
+            {
+              "dest": "api.infoldgames.com",
+              "id": "607b674b-481f-4412-b146-378a6b562b0f",
+              "monitorType": 1,
+              "subtype": 4
+            }
+          ]
+        }
+      },
+      {
+        "parentclass": {
+          "parenttype": 2,
+          "subclass": [
+            {
+              "dest": "x3jp-client-v8bci8bzmq8vqa.infoldgames.com",
+              "id": "9f5c56ee-e957-4603-82e2-283d40421edc",
+              "monitorType": 1,
+              "subtype": 5
+            },
+            {
+              "dest": "https://x3jp-client-v8bci8bzmq8vqa.infoldgames.com/v8jp-2026-test.txt",
+              "httpMethod": 1,
+              "id": "052ec836-dd87-4887-afd9-eeb72b0315b3",
+              "monitorType": 3,
+              "subtype": 6
+            },
+            {
+              "dest": "x3asia-gatesvr.infoldgames.com",
+              "id": "d0baacb2-dbc5-4930-a9cf-6414fb00294c",
+              "monitorType": 1,
+              "subtype": 7
+            },
+            {
+              "dest": "x3asia-gatesvr.infoldgames.com",
+              "id": "8d3fc760-2ecd-4f07-9ef4-4f71d966c91e",
+              "monitorType": 4,
+              "port": 13101,
+              "subtype": 8
+            }
+          ]
+        }
+      }
+    ],
+    "netDiagnosis3": [],
+    "network_monitor": "[]",
+    "payMsg": [
+      {
+        "chargetype": 4,
+        "isSuggest": true,
+        "name": "支付宝",
+        "show": false
+      },
+      {
+        "chargetype": 6,
+        "isSuggest": true,
+        "name": "微信",
+        "show": false
+      },
+      {
+        "chargetype": 4,
+        "isSuggest": true,
+        "name": "花呗",
+        "show": false
+      },
+      {
+        "chargetype": 56,
+        "isSuggest": true,
+        "name": "微信",
+        "show": false
+      }
+    ],
+    "pay_env": "release",
+    "payloadingtime": 60,
+    "ps_anti_addiction_open": 0,
+    "ps_report_online_time_interval": 300,
+    "psnEnableConsumeWhenReactived": false,
+    "psnUsePriceIgnoreCase": 1,
+    "qostlog": 1,
+    "qostlog_cache_count": 1000,
+    "realname": 0,
+    "refreshTokenCountdown": 168,
+    "send_tlog_url": "https://apm.infoldgames.com",
+    "trackEnabled": 0,
+    "trackingio_switch": []
+  },
+  "ret": 0,
+  "request_id": "30e8f682-96ab-41ae-8fcc-ceb55a786b61",
+  "msg": "OK",
+  "time": 1788628018
+}

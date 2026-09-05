@@ -1,0 +1,30 @@
+{
+  "game_config_serverlists": [
+    {
+      "id": 500058,
+      "clientid": 1067,
+      "zone_id": 1,
+      "region": 85,
+      "role": 0,
+      "name": "望舒市",
+      "extra": {
+        "addr": "entrance01.fatui.xyz:13001",
+        "state": 0,
+        "recommend": 0,
+        "hot": 0,
+        "watermark": 0,
+        "opentime": "2024-01-18 05:10:00",
+        "tz": 8,
+        "login_url": "https://pape-loginsvr.fatui.xyz/rpc",
+        "min_version": "1.6.1395",
+        "canary_role": 0,
+        "cluster_label": "CN",
+        "queue_switch": 1,
+        "queue": "signin_1_x3",
+        "pre_pinch_face": 0
+      },
+      "is_audit": 0,
+      "channel": 81
+    }
+  ]
+}

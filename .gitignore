@@ -9,3 +9,5 @@ pape-sdk-*.exe
 .codex-backups/
 .codex-artifacts/
 /AGENTS.md
+
+data/email-outbox/

@@ -50,6 +50,7 @@ func (a *App) getAdminAccount(c *gin.Context) {
 func (a *App) createAdminAccount(c *gin.Context) {
 	var input struct {
 		Phone    string `json:"phone"`
+		Email    string `json:"email"`
 		Password string `json:"password"`
 	}
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -65,16 +66,10 @@ func (a *App) createAdminAccount(c *gin.Context) {
 		}
 		encodedPassword = hash
 	}
-	user, err := a.store.CreateUser(input.Phone)
+	user, err := a.store.CreateAccount(input.Phone, input.Email, encodedPassword)
 	if err != nil {
 		c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
 		return
-	}
-	if encodedPassword != "" {
-		if err := a.store.SetPasswordHash(user.ID, encodedPassword); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
-		}
 	}
 	account, _, _ := a.store.AdminAccountByID(user.ID)
 	c.JSON(http.StatusCreated, account)
@@ -88,14 +83,15 @@ func (a *App) updateAdminAccount(c *gin.Context) {
 	}
 	var input struct {
 		Phone  *string `json:"phone"`
+		Email  *string `json:"email"`
 		IsSafe *bool   `json:"is_safe"`
 	}
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	if input.Phone != nil {
-		if err := a.store.AdminUpdateAccount(id, *input.Phone); err != nil {
+	if input.Phone != nil || input.Email != nil {
+		if err := a.store.UpdateBindings(id, input.Phone, input.Email); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}

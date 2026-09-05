@@ -174,7 +174,7 @@ TLS SNI 和解密后的 HTTP Host 验证 Papegames 身份。非 Papegames SNI/Ho
 
 ### Pape-BOOI 集成
 
-SDK 登录响应包含 `openid` 和 SDK `token`。`config/serverlist.json` 中的 `login_url`
+SDK 登录响应包含 `openid` 和 SDK `token`。`config/apps/<AppID>/serverlist.json` 中的 `login_url`
 与 `addr` 应分别指向 Pape-BOOI 的 `/rpc/nuanlogin` HTTP 监听和 13001 TCP 监听。
 SDK 本进程不会注册 `/rpc/nuanlogin`，也不会监听 13001。
 
@@ -204,3 +204,30 @@ Inner 监听器并复用 Bearer Token 鉴权，不会挂载到公共 SDK 或用�
 ## 说明
 
 本项目仅供学习与研究使用。
+
+
+## 多应用与国际服
+
+`applications` 按 Passport `app_id` 配置 `client_id`、`app_key`、`aes_key`、`config_dir` 和 `api`。登录按应用选择 BFF 签名及加解密参数；资源接口使用 `game_client_id` 与 `channel`/`region` 选择应用。无地区参数的资源请求通过 `game_config_dirs` 选择共享配置。
+
+配置查找顺序：已识别应用优先读取 `config/apps/<AppID>/<name>.json`，其次读取 `game_config_dirs` 对应目录；已识别的应用/游戏目录缺文件时转发对应上游，不再回退国服公共配置。未指定应用和游戏客户端的兼容请求使用 `config_dir`。现有部署的国服数据在 `config/apps/kmT84W9D`，公共配置在 `config/common`，国际服共享数据在 `config/game-clients/1067`。各应用可覆盖任意 JSON；每次请求读取配置文件。修改 YAML 后重启 `MumlPapeSDK`。
+
+代理支持 `papegames.com`、`infoldgames.com` 及其子域，复用原 CA 并更新包含两个域名的叶证书；深层子域按 SNI 签发证书。各应用服务器列表里的登录及 Gate 地址均加入允许列表。
+
+## 手机号与邮箱绑定
+
+账号可只绑定手机号、只绑定邮箱或同时绑定两者。邮箱统一小写，两个标识都可登录同一 ID/OpenID。SQLite 自动增加邮箱列和唯一索引，保持现有账号 ID；绑定变更使用事务，禁止删掉最后一种绑定。
+
+- `POST /v1/user/email/register`：邮箱、验证码、密码注册；原手机号注册与登录接口保留。
+- `POST /v1/user/account/bind` / `change`：已登录用户凭新绑定验证码添加或更换手机号/邮箱。
+- `POST /v1/user/account/unbind`：`kind=phone|email`，携带登录凭证及保留绑定收到的 `scene=unbind` 验证码。
+- Inner 管理接口创建/更新接受 `phone`、`email`；更新时省略字段表示保留，空字符串表示清空，至少保留一项。
+- 已补 `POST /v1/accessories/init` 及 `POST /v1/gameconfig/entries`。
+
+邮箱验证码使用随机六位数，十分钟有效并限制发送频率。`email.mode=smtp` 使用 SMTP STARTTLS（587）或隐式 TLS（465），配置 `host/port/username/password/from`。`email.mode=outbox` 将邮件写入 `email.outbox_dir`，用于本地联调，不会发送至真实邮箱。部署前切换到可用 SMTP 配置即可实投。
+
+本次国际服适配覆盖已抓取的邮箱注册和密码登录。Google/Apple/Facebook 等第三方 OAuth 需要对应授权应用及令牌校验，不由邮箱登录替代。
+
+完整配置比较、请求选择规则和缺样本范围见 [国际服配置差异](docs/international-config-comparison.md)。
+
+`default_application` 指定缺少应用标识的兼容请求使用哪个已配置应用。所有游戏应用密钥统一放在 `applications`；`sdk_constants` 已移除。多个应用时必须显式选择默认应用，单应用可自动选中。`user_center_constants` 仍是网页用户中心独立协议所需的配置。
